@@ -1,7 +1,5 @@
 # 🍃 AgroShop - Toko Pertanian Terpercaya
 
-![AgroShop Banner](assets/images/banner.png)
-
 AgroShop adalah aplikasi marketplace modern yang dirancang khusus untuk memenuhi kebutuhan sektor pertanian. Aplikasi ini memberikan kemudahan bagi petani dan pelaku usaha agribisnis untuk menemukan benih, pupuk, alat pertanian, dan produk agrikultur lainnya dalam satu platform yang intuitif dan responsif.
 
 ## ✨ Fitur Utama
