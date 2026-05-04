@@ -71,4 +71,4 @@ lib/
 Proyek ini dikembangkan untuk tujuan edukasi dan pengembangan agribisnis digital.
 
 ---
-Dikembangkan dengan ❤️ oleh **Muhamad Alfin Faizs**
+
