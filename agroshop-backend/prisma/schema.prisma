@@ -1,0 +1,85 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // Pastikan ini sesuai dengan database Anda (mysql / postgresql)
+  provider = "postgresql" 
+  url      = env("DATABASE_URL")
+}
+
+// ==================== TABEL CATEGORY ====================
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String
+  icon      String
+  imageUrl  String
+  
+  products  Product[]
+}
+
+// ==================== TABEL PRODUCT ====================
+model Product {
+  id            Int        @id @default(autoincrement())
+  name          String
+  description   String     @db.Text
+  price         Float
+  discountPrice Float?     
+  imageUrl      String
+  images        String[]   
+  stock         Int
+  rating        Float      @default(0)
+  reviewCount   Int        @default(0)
+  isFeatured    Boolean    @default(false)
+  isAvailable   Boolean    @default(true)
+  unit          String     
+
+  category      Category   @relation(fields: [categoryId], references: [id])
+  categoryId    Int
+
+  cartItems     CartItem[]
+}
+
+// ==================== TABEL USER ====================
+model User {
+  id          Int       @id @default(autoincrement())
+  name        String
+  email       String    @unique
+  password    String    
+  role        Role      @default(FARMER) 
+  phone       String?   
+  imageUrl    String?   
+  address     String?   @db.Text
+  joinedDate  DateTime? @default(now())
+
+  cartItems  CartItem[]
+}
+
+// Enum untuk Role User
+enum Role {
+  ADMIN
+  FARMER
+}
+
+// ==================== TABEL CART ITEM ====================
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  quantity  Int
+  addedAt   DateTime @default(now())
+
+  product   Product  @relation(fields: [productId], references: [id])
+  productId Int
+
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+}
+
+// ==================== TABEL BANNER ====================
+model Banner {
+  id        Int      @id @default(autoincrement())
+  title     String
+  subtitle  String
+  imageUrl  String
+}

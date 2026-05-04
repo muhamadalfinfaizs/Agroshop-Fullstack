@@ -1,0 +1,8 @@
+agroshop-frontend/
+node_modules
+.env
+dist
+
+# Flutter
+.dart_tool/
+build/
