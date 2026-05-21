@@ -379,16 +379,32 @@ class DummyData {
   }
 
   // ==================== User ====================
-static final User currentUser = User(
+static User currentUser = User(
     id: 1,
     name: 'Budi Petani',
     email: 'budi@example.com',
     role: 'FARMER', // <-- Tambahkan baris ini
     phone: '081234567890',
-    imageUrl: 'https://randomuser.me/api/portraits/men/32.jpg',
-    address: 'Jl. Pertanian No. 123, Desa Makmur, Jawa Barat',
-    // joinedDate: DateTime.now().subtract(const Duration(days: 120)), <-- Hapus atau komen baris ini
   );
+
+  static List<Map<String, dynamic>> dummyAddresses = [
+    {
+      'id': 1,
+      'label': 'Utama',
+      'name': 'Budi Petani',
+      'phone': '081234567890',
+      'detail': 'Jl. Pertanian No. 123, RT 02/RW 05, Desa Makmur, Kec. Subur, Bandung, Jawa Barat 40301',
+      'isDefault': true,
+    },
+    {
+      'id': 2,
+      'label': 'Kantor / Gudang Sawah',
+      'name': 'Budi Petani (Sawah)',
+      'phone': '081234567890',
+      'detail': 'Gudang Agro Utama, Blok C3 No. 4, Kawasan Sentra Tani, Soreang, Kabupaten Bandung, Jawa Barat 40911',
+      'isDefault': false,
+    }
+  ];
 
   // ==================== Cart Items (Dummy) ====================
   static List<CartItem> get cartItems => [

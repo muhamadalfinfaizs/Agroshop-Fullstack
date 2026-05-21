@@ -6,6 +6,7 @@ import '../../models/product.dart';
 import '../../widgets/product_card.dart';
 import '../product/product_detail_screen.dart';
 import '../cart/cart_screen.dart';
+import '../../services/api_service.dart';
 
 /// Product List Screen - Menampilkan daftar produk dengan filter dan sorting
 class ProductListScreen extends StatefulWidget {
@@ -28,17 +29,69 @@ class _ProductListScreenState extends State<ProductListScreen> {
   bool _isGridView = true;
   String _sortBy = 'terbaru';
   RangeValues _priceRange = const RangeValues(0, 500000);
+  bool _isLoading = true;
+  List<Product> _allProducts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProducts();
+  }
+
+  Future<void> _fetchProducts() async {
+    try {
+      final fetchedProducts = await ApiService.getProducts();
+      if (mounted) {
+        setState(() {
+          _allProducts = fetchedProducts;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching products: $e");
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal mengambil data dari server')),
+        );
+      }
+    }
+  }
+
+  Future<void> _addToCart(Product product) async {
+    try {
+      await ApiService.addToCart(product.id, 1);
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${product.name} ditambahkan ke keranjang!'),
+            backgroundColor: AppColors.success,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal menambahkan ke keranjang. Silakan login ulang.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
 
   List<Product> get _filteredProducts {
-    List<Product> products;
+    List<Product> products = List.from(_allProducts);
 
     // Filter berdasarkan category atau featured
     if (widget.categoryId != null) {
-      products = DummyData.getProductsByCategory(widget.categoryId!);
+      products = products.where((p) => p.categoryId == widget.categoryId).toList();
     } else if (widget.isFeatured) {
-      products = DummyData.featuredProducts;
-    } else {
-      products = DummyData.products;
+      products = products.where((p) => p.isFeatured).toList();
     }
 
     // Filter berdasarkan harga
@@ -122,17 +175,19 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Filter & Sort Bar
-          _buildFilterBar(),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : Column(
+              children: [
+                // Filter & Sort Bar
+                _buildFilterBar(),
 
-          // Product List/Grid
-          Expanded(
-            child: _isGridView ? _buildGridView() : _buildListView(),
-          ),
-        ],
-      ),
+                // Product List/Grid
+                Expanded(
+                  child: _isGridView ? _buildGridView() : _buildListView(),
+                ),
+              ],
+            ),
       // Filter button
       floatingActionButton: FloatingActionButton(
         onPressed: _showFilterBottomSheet,
@@ -220,7 +275,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
             );
           },
           onAddToCart: () {
-            _showAddedSnackbar(context, product.name);
+            _addToCart(product);
           },
         );
       },
@@ -284,7 +339,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
             trailing: IconButton(
               icon: const Icon(Icons.add_shopping_cart, color: AppColors.primary),
               onPressed: () {
-                _showAddedSnackbar(context, product.name);
+                _addToCart(product);
               },
             ),
             onTap: () {
@@ -384,15 +439,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
           },
         );
       },
-    );
-  }
-
-  void _showAddedSnackbar(BuildContext context, String productName) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$productName ditambahkan ke keranjang!'),
-        backgroundColor: AppColors.primary,
-      ),
     );
   }
 

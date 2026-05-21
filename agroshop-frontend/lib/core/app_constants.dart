@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// App constants untuk nilai-nilai yang sering digunakan
 class AppConstants {
   AppConstants._();
@@ -42,7 +44,7 @@ class AppConstants {
   static const Duration animationSlow = Duration(milliseconds: 500);
 
 // API Constants
-  static const String baseUrl = 'http://10.0.2.2:3000'; // Khusus Emulator Android
+  static const String baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://10.0.2.2:3000'; // Support for Web and Android Emulator
   static const Duration apiTimeout = Duration(seconds: 30);
   
   // Endpoints (Sesuaikan jika path di NestJS kamu berbeda)

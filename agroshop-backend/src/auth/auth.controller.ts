@@ -31,10 +31,11 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
-  getProfile(@Req() req: any) {
+  async getProfile(@Req() req: any) {
+    const user = await this.authService.getProfile(req.user.userId);
     return {
       message: 'Anda diizinkan masuk!',
-      user: req.user,
+      user: user,
     };
   }
 }

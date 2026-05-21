@@ -6,6 +6,7 @@ import '../../models/dummy_data.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/price_tag.dart';
 import '../cart/cart_screen.dart';
+import '../../services/api_service.dart';
 
 /// Product Detail Screen - Menampilkan detail produk lengkap
 class ProductDetailScreen extends StatefulWidget {
@@ -383,7 +384,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               icon: Icons.shopping_cart_outlined,
               onPressed: widget.product.isAvailable
                   ? () {
-                      _showAddedToCartDialog();
+                      _handleAddToCart();
                     }
                   : null,
             ),
@@ -391,6 +392,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _handleAddToCart() async {
+    try {
+      await ApiService.addToCart(widget.product.id, _quantity);
+      if (mounted) {
+        _showAddedToCartDialog();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal menambahkan ke keranjang. Silakan login ulang.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   void _showAddedToCartDialog() {

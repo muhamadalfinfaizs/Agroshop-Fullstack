@@ -98,4 +98,15 @@ export class AuthService {
       },
     };
   }
+
+  async getProfile(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new UnauthorizedException('User tidak ditemukan');
+    }
+    const { password, ...result } = user;
+    return result;
+  }
 }

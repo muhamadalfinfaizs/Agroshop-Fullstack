@@ -1,15 +1,73 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_constants.dart';
 import '../../models/dummy_data.dart';
+import '../../models/user.dart';
+import '../../services/api_service.dart';
+import '../auth/login_screen.dart';
+import 'personal_data_screen.dart';
+import 'address_screen.dart';
+import 'order_history_screen.dart';
 
 /// Profile Screen - Menampilkan data user dan menu-menu terkait
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  User? _user;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final profile = await ApiService.getProfile();
+      if (mounted) {
+        // Sinkronkan ke DummyData
+        DummyData.currentUser = User(
+          id: profile.id,
+          name: DummyData.currentUser.name == 'Budi Petani' ? profile.name : DummyData.currentUser.name,
+          email: profile.email,
+          role: profile.role,
+          phone: DummyData.currentUser.phone ?? profile.phone,
+          imageUrl: profile.imageUrl ?? DummyData.currentUser.imageUrl,
+          address: DummyData.currentUser.address ?? profile.address,
+        );
+        
+        setState(() {
+          _user = DummyData.currentUser;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching profile: $e");
+      if (mounted) {
+        setState(() {
+          _user = DummyData.currentUser;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final user = DummyData.currentUser;
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      );
+    }
+
+    final user = _user ?? DummyData.currentUser;
 
     return Scaffold(
       appBar: AppBar(
@@ -17,80 +75,94 @@ class ProfileScreen extends StatelessWidget {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        child: SafeArea(
-          bottom: false, // Biarkan sistem menangani bottom area
-          child: Column(
-            children: [
-              // Profile Header
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(AppConstants.paddingL),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [AppColors.primary, AppColors.primaryDark],
-                ),
-              ),
-              child: Column(
-                children: [
-                  // Avatar
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
-                      border: Border.all(color: Colors.white, width: 3),
+      body: RefreshIndicator(
+        onRefresh: _fetchProfile,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                // Profile Header
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppConstants.paddingL),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [AppColors.primary, AppColors.primaryDark],
                     ),
-                    child: ClipOval(
-                      child: Icon(
-                        Icons.person,
-                        size: 60,
-                        color: AppColors.primary.withValues(alpha: 0.5),
+                  ),
+                  child: Column(
+                    children: [
+                      // Avatar
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          border: Border.all(color: Colors.white, width: 3),
+                        ),
+                        child: ClipOval(
+                          child: (user.imageUrl != null && user.imageUrl!.isNotEmpty)
+                              ? Image.network(
+                                  user.imageUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => Icon(
+                                    Icons.person,
+                                    size: 60,
+                                    color: AppColors.primary.withValues(alpha: 0.5),
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.person,
+                                  size: 60,
+                                  color: AppColors.primary.withValues(alpha: 0.5),
+                                ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: AppConstants.paddingM),
+                      // Name
+                      Text(
+                        user.name,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: AppConstants.paddingXS),
+                      // Email
+                      Text(
+                        user.email,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
+                      ),
+                      const SizedBox(height: AppConstants.paddingM),
+                      // Edit profile button
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          _showComingSoonSnackbar(context, 'Edit Profil');
+                        },
+                        icon: const Icon(Icons.edit, size: 18),
+                        label: const Text('Edit Profil'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Colors.white),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: AppConstants.paddingM),
-                  // Name
-                  Text(
-                    user.name,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: AppConstants.paddingXS),
-                  // Email
-                  Text(
-                    user.email,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white.withValues(alpha: 0.9),
-                    ),
-                  ),
-                  const SizedBox(height: AppConstants.paddingM),
-                  // Edit profile button
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      _showComingSoonSnackbar(context, 'Edit Profil');
-                    },
-                    icon: const Icon(Icons.edit, size: 18),
-                    label: const Text('Edit Profil'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                ),
 
-            // Menu Sections
-            _buildMenuSection(context),
-            ],
+                // Menu Sections
+                _buildMenuSection(context),
+              ],
+            ),
           ),
         ),
       ),
@@ -98,6 +170,7 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildMenuSection(BuildContext context) {
+    final user = _user ?? DummyData.currentUser;
     return Padding(
       padding: const EdgeInsets.all(AppConstants.paddingM),
       child: Column(
@@ -110,19 +183,29 @@ class ProfileScreen extends StatelessWidget {
               icon: Icons.person_outline,
               title: 'Data Diri',
               subtitle: 'Kelola informasi pribadi',
-              onTap: () => _showComingSoonSnackbar(context, 'Data Diri'),
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const PersonalDataScreen()),
+                );
+                if (result == true) {
+                  _fetchProfile();
+                }
+              },
             ),
             _MenuItem(
               icon: Icons.location_on_outlined,
               title: 'Alamat Pengiriman',
-              subtitle: 'Kelola alamat pengiriman',
-              onTap: () => _showComingSoonSnackbar(context, 'Alamat'),
-            ),
-            _MenuItem(
-              icon: Icons.payment_outlined,
-              title: 'Metode Pembayaran',
-              subtitle: 'Kelola cara pembayaran',
-              onTap: () => _showComingSoonSnackbar(context, 'Pembayaran'),
+              subtitle: (user.address != null && user.address!.isNotEmpty) ? user.address! : 'Kelola alamat pengiriman',
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AddressScreen()),
+                );
+                if (result == true) {
+                  _fetchProfile();
+                }
+              },
             ),
           ]),
 
@@ -135,7 +218,12 @@ class ProfileScreen extends StatelessWidget {
               icon: Icons.shopping_bag_outlined,
               title: 'Pesanan Saya',
               subtitle: 'Lihat riwayat pesanan',
-              onTap: () => _showComingSoonSnackbar(context, 'Pesanan'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const OrderHistoryScreen()),
+                );
+              },
             ),
             _MenuItem(
               icon: Icons.local_shipping_outlined,
@@ -150,12 +238,6 @@ class ProfileScreen extends StatelessWidget {
           // Lainnya Section
           _buildSectionTitle('Lainnya'),
           _buildMenuCard([
-            _MenuItem(
-              icon: Icons.favorite_outline,
-              title: 'Wishlist',
-              subtitle: 'Produk yang disimpan',
-              onTap: () => _showComingSoonSnackbar(context, 'Wishlist'),
-            ),
             _MenuItem(
               icon: Icons.notifications_outlined,
               title: 'Notifikasi',
@@ -256,6 +338,8 @@ class ProfileScreen extends StatelessWidget {
                 subtitle: Text(
                   item.subtitle,
                   style: const TextStyle(fontSize: 12),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 trailing: const Icon(
                   Icons.chevron_right,
@@ -330,14 +414,26 @@ class ProfileScreen extends StatelessWidget {
             child: const Text('Batal'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Berhasil keluar!'),
-                  backgroundColor: AppColors.primary,
-                ),
-              );
+              // Hapus token JWT
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove('jwt_token');
+
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Berhasil keluar!'),
+                    backgroundColor: AppColors.primary,
+                  ),
+                );
+                // Arahkan ke halaman login
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Keluar'),

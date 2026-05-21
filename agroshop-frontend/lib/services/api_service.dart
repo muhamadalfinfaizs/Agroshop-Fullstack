@@ -80,6 +80,28 @@ class ApiService {
     }
   }
 
+  // Fungsi mengambil profile user dari /auth/profile
+  static Future<User> getProfile() async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.get(
+        Uri.parse('${AppConstants.baseUrl}/auth/profile'),
+        headers: headers,
+      );
+
+      final decodedJson = jsonDecode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> userData = decodedJson['user'];
+        return User.fromJson(userData);
+      } else {
+        throw Exception(decodedJson['message'] ?? 'Gagal memuat profil');
+      }
+    } catch (e) {
+      debugPrint('Error getProfile API: $e');
+      rethrow;
+    }
+  }
+
   // --- HELPER UNTUK TOKEN BEARER --- //
   
   static Future<Map<String, String>> _getAuthHeaders() async {
