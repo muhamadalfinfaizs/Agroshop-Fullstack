@@ -5,4 +5,4 @@ dist
 
 # Flutter
 .dart_tool/
-build/
+build/*.log
