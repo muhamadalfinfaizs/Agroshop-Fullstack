@@ -5,6 +5,8 @@ import '../../models/cart_item.dart';
 import '../../services/api_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/price_tag.dart';
+import '../profile/address_screen.dart';
+import '../../core/utils/currency_format.dart';
 
 /// Cart Screen - Menampilkan item di keranjang dengan quantity control (Terintegrasi API)
 class CartScreen extends StatefulWidget {
@@ -16,6 +18,7 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   List<CartItem> _cartItems = [];
+  Set<int> _selectedItemIds = {};
   bool _isLoading = true;
 
   @override
@@ -31,6 +34,7 @@ class _CartScreenState extends State<CartScreen> {
       if (mounted) {
         setState(() {
           _cartItems = items;
+          _selectedItemIds = items.map((e) => e.id).toSet();
           _isLoading = false;
         });
       }
@@ -44,8 +48,10 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  double get _subtotal => _cartItems.fold(0, (sum, item) => sum + item.totalPrice);
-  double get _shipping => _subtotal > 200000 ? 0 : 15000;
+  double get _subtotal => _cartItems
+      .where((item) => _selectedItemIds.contains(item.id))
+      .fold(0, (sum, item) => sum + item.totalPrice);
+  double get _shipping => _subtotal == 0 ? 0 : (_subtotal > 50000 ? 0 : 15000);
   double get _total => _subtotal + _shipping;
 
   @override
@@ -66,17 +72,31 @@ class _CartScreenState extends State<CartScreen> {
             ),
         ],
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-        : _cartItems.isEmpty 
-          ? _buildEmptyCart() 
-          : SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: AppConstants.paddingM),
-                child: _buildCartList(),
-              ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
+          : RefreshIndicator(
+              onRefresh: _fetchCart,
+              color: AppColors.primary,
+              child: _cartItems.isEmpty
+                  ? SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.7,
+                        child: _buildEmptyCart(),
+                      ),
+                    )
+                  : SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: AppConstants.paddingM),
+                        child: _buildCartList(),
+                      ),
+                    ),
             ),
-      bottomNavigationBar: (!_isLoading && _cartItems.isNotEmpty) ? _buildCheckoutBar() : null,
+      bottomNavigationBar: (!_isLoading && _cartItems.isNotEmpty)
+          ? _buildCheckoutBar()
+          : null,
     );
   }
 
@@ -88,7 +108,9 @@ class _CartScreenState extends State<CartScreen> {
           Icon(
             Icons.shopping_cart_outlined,
             size: 100,
-            color: AppColors.textHint.withValues(alpha: 0.5), // Sudah di-update agar bebas linter warning
+            color: AppColors.textHint.withValues(
+              alpha: 0.5,
+            ), // Sudah di-update agar bebas linter warning
           ),
           const SizedBox(height: AppConstants.paddingL),
           const Text(
@@ -116,13 +138,47 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Widget _buildCartList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(AppConstants.paddingM),
-      itemCount: _cartItems.length,
-      itemBuilder: (context, index) {
-        final item = _cartItems[index];
-        return _buildCartItemCard(item, index);
-      },
+    final allSelected =
+        _cartItems.isNotEmpty && _selectedItemIds.length == _cartItems.length;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppConstants.paddingM,
+          ),
+          child: Row(
+            children: [
+              Checkbox(
+                value: allSelected,
+                activeColor: AppColors.primary,
+                onChanged: (value) {
+                  setState(() {
+                    if (value == true) {
+                      _selectedItemIds = _cartItems.map((e) => e.id).toSet();
+                    } else {
+                      _selectedItemIds.clear();
+                    }
+                  });
+                },
+              ),
+              const Text(
+                'Pilih Semua',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.all(AppConstants.paddingM),
+            itemCount: _cartItems.length,
+            itemBuilder: (context, index) {
+              final item = _cartItems[index];
+              return _buildCartItemCard(item, index);
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -136,6 +192,19 @@ class _CartScreenState extends State<CartScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Checkbox(
+                  value: _selectedItemIds.contains(item.id),
+                  activeColor: AppColors.primary,
+                  onChanged: (value) {
+                    setState(() {
+                      if (value == true) {
+                        _selectedItemIds.add(item.id);
+                      } else {
+                        _selectedItemIds.remove(item.id);
+                      }
+                    });
+                  },
+                ),
                 // Product Image (Untuk sementara dummy icon, nanti bisa diubah pakai Image.network)
                 Container(
                   width: 80,
@@ -185,7 +254,10 @@ class _CartScreenState extends State<CartScreen> {
                 ),
                 // Delete button
                 IconButton(
-                  icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: AppColors.error,
+                  ),
                   onPressed: () => _removeItem(index),
                 ),
               ],
@@ -235,7 +307,7 @@ class _CartScreenState extends State<CartScreen> {
                       ),
                     ),
                     Text(
-                      'Rp ${_formatPrice(item.totalPrice)}',
+                      'Rp ${formatPrice(item.totalPrice)}',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -265,10 +337,7 @@ class _CartScreenState extends State<CartScreen> {
         icon: Icon(icon, size: 18),
         onPressed: onPressed,
         color: onPressed != null ? AppColors.primary : AppColors.textHint,
-        constraints: const BoxConstraints(
-          minWidth: 32,
-          minHeight: 32,
-        ),
+        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
         padding: EdgeInsets.zero,
       ),
     );
@@ -294,17 +363,23 @@ class _CartScreenState extends State<CartScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Subtotal', style: TextStyle(color: AppColors.textSecondary)),
-                Text('Rp ${_formatPrice(_subtotal)}'),
+                const Text(
+                  'Subtotal',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+                Text('Rp ${formatPrice(_subtotal)}'),
               ],
             ),
             const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Ongkos Kirim', style: TextStyle(color: AppColors.textSecondary)),
+                const Text(
+                  'Ongkos Kirim',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
                 Text(
-                  _shipping == 0 ? 'Gratis' : 'Rp ${_formatPrice(_shipping)}',
+                  _shipping == 0 ? 'Gratis' : 'Rp ${formatPrice(_shipping)}',
                   style: TextStyle(
                     color: _shipping == 0 ? AppColors.success : null,
                   ),
@@ -317,13 +392,10 @@ class _CartScreenState extends State<CartScreen> {
               children: [
                 const Text(
                   'Total',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                 ),
                 Text(
-                  'Rp ${_formatPrice(_total)}',
+                  'Rp ${formatPrice(_total)}',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
@@ -337,7 +409,7 @@ class _CartScreenState extends State<CartScreen> {
               text: 'Checkout',
               icon: Icons.shopping_cart_checkout,
               isFullWidth: true,
-              onPressed: _showCheckoutDialog,
+              onPressed: _processCheckout,
             ),
           ],
         ),
@@ -366,7 +438,10 @@ class _CartScreenState extends State<CartScreen> {
           _cartItems[index] = item.copyWith(quantity: oldQuantity);
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal mengubah jumlah. Periksa koneksi.'), backgroundColor: AppColors.error),
+          const SnackBar(
+            content: Text('Gagal mengubah jumlah. Periksa koneksi.'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -383,6 +458,9 @@ class _CartScreenState extends State<CartScreen> {
     try {
       await ApiService.removeCartItem(item.id);
       if (mounted) {
+        setState(() {
+          _selectedItemIds.remove(item.id);
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Item dihapus dari keranjang'),
@@ -397,34 +475,38 @@ class _CartScreenState extends State<CartScreen> {
           _cartItems.insert(index, item);
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal menghapus item.'), backgroundColor: AppColors.error),
+          const SnackBar(
+            content: Text('Gagal menghapus item.'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
   }
 
-void _showClearCartDialog() {
+  void _showClearCartDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Hapus Semua Item?'),
         content: const Text('Apakah Anda yakin ingin mengosongkan keranjang?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Batal'),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context); // Tutup dialog dulu
+              Navigator.pop(dialogContext); // Tutup dialog dulu
               setState(() => _isLoading = true);
-              
+
               try {
                 await ApiService.clearCart();
-                
+
                 if (!mounted) return; // Gaya penulisan baru yang disukai linter Flutter
                 setState(() {
                   _cartItems.clear();
+                  _selectedItemIds.clear();
                   _isLoading = false;
                 });
               } catch (e) {
@@ -432,8 +514,8 @@ void _showClearCartDialog() {
                 setState(() => _isLoading = false);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Gagal mengosongkan keranjang.'), 
-                    backgroundColor: AppColors.error
+                    content: Text('Gagal mengosongkan keranjang.'),
+                    backgroundColor: AppColors.error,
                   ),
                 );
               }
@@ -446,63 +528,102 @@ void _showClearCartDialog() {
     );
   }
 
-  void _showCheckoutDialog() {
-    // Checkout sementara belum disambung ke API (hanya pop up UI)
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppConstants.radiusL),
+  Future<void> _processCheckout() async {
+    if (_selectedItemIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pilih minimal satu produk untuk di-checkout'),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.check_circle,
-              color: AppColors.success,
-              size: 60,
-            ),
-            const SizedBox(height: AppConstants.paddingM),
-            const Text(
-              'Checkout Berhasil!',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final currentTotal = _total; // Simpan total sebelum state di-reset
+
+    try {
+      final selectedAddressId = await Navigator.push<int>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const AddressScreen(isSelectionMode: true),
+        ),
+      );
+
+      // Jika user menekan tombol back (batal memilih alamat)
+      if (selectedAddressId == null) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+
+      // Proses Checkout API
+      await ApiService.checkout(
+        selectedAddressId,
+        cartItemIds: _selectedItemIds.toList(),
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _cartItems.removeWhere((item) => _selectedItemIds.contains(item.id));
+        _selectedItemIds.clear();
+        _isLoading = false;
+      });
+
+      // Tampilkan popup sukses
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppConstants.radiusL),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.check_circle,
+                color: AppColors.success,
+                size: 60,
               ),
-            ),
-            const SizedBox(height: AppConstants.paddingS),
-            Text(
-              'Total pembayaran: Rp ${_formatPrice(_total)}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: AppConstants.paddingS),
-            const Text(
-              'Pesanan Anda akan diproses.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary),
+              const SizedBox(height: AppConstants.paddingM),
+              const Text(
+                'Checkout Berhasil!',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: AppConstants.paddingS),
+              Text(
+                'Total pembayaran: Rp ${formatPrice(currentTotal)}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: AppConstants.paddingS),
+              const Text(
+                'Pesanan Anda akan diproses.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context); // Tutup dialog
+              },
+              child: const Text('OK'),
             ),
           ],
         ),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
-            },
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatPrice(double price) {
-    if (price >= 1000000) {
-      return '${(price / 1000000).toStringAsFixed(1)}jt';
-    } else if (price >= 1000) {
-      return '${(price / 1000).toStringAsFixed(0)}rb';
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
-    return price.toStringAsFixed(0);
   }
 }

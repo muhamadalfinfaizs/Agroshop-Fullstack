@@ -4,5 +4,4 @@ export class RegisterDto {
   password!: string;
   phone?: string;
   imageUrl?: string;
-  address?: string;
 }

@@ -6,7 +6,7 @@ class User {
   final String role; // DEFAULT: FARMER
   final String? phone; // Nullable
   final String? imageUrl; // Nullable
-  final String? address; // Nullable
+
 
   User({
     required this.id,
@@ -15,7 +15,6 @@ class User {
     required this.role,
     this.phone,
     this.imageUrl,
-    this.address,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -27,7 +26,6 @@ class User {
       // Hati-hati di sini: pastikan casting nullable aman
       phone: json['phone'] as String?,
       imageUrl: json['imageUrl'] as String?,
-      address: json['address'] as String?,
     );
   }
 }

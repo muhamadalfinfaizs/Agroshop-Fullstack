@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_constants.dart';
-import '../../models/dummy_data.dart';
+
 import '../../models/user.dart';
+import '../../services/api_service.dart';
 
 class PersonalDataScreen extends StatefulWidget {
   const PersonalDataScreen({super.key});
@@ -16,15 +17,38 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
+  User? _user;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    // Inisialisasi controller dengan data dari DummyData
-    final user = DummyData.currentUser;
-    _nameController = TextEditingController(text: user.name);
-    _emailController = TextEditingController(text: user.email);
-    _phoneController = TextEditingController(text: user.phone ?? '');
+    _nameController = TextEditingController();
+    _emailController = TextEditingController();
+    _phoneController = TextEditingController();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final user = await ApiService.getProfile();
+      if (mounted) {
+        setState(() {
+          _user = user;
+          _nameController.text = user.name;
+          _emailController.text = user.email;
+          _phoneController.text = user.phone ?? '';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memuat profil: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -35,33 +59,75 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
     super.dispose();
   }
 
-  void _saveData() {
+  bool _isSaving = false;
+
+  void _saveData() async {
     if (_formKey.currentState!.validate()) {
-      // Simpan perubahan ke DummyData
-      final currentUser = DummyData.currentUser;
-      DummyData.currentUser = User(
-        id: currentUser.id,
-        name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-        role: currentUser.role,
-        phone: _phoneController.text.trim(),
-        imageUrl: currentUser.imageUrl,
-        address: currentUser.address,
-      );
+      setState(() {
+        _isSaving = true;
+      });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Data diri berhasil disimpan! (Dummy)'),
-          backgroundColor: AppColors.success,
-        ),
-      );
+      try {
+        await ApiService.updateProfile({
+          'name': _nameController.text.trim(),
+          'email': _emailController.text.trim(),
+          'phone': _phoneController.text.trim(),
+        });
 
-      Navigator.pop(context, true); // Kirim true agar halaman sebelumnya tahu ada perubahan
+
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Data diri berhasil disimpan!'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+          Navigator.pop(context, true); // Kirim true agar halaman sebelumnya tahu ada perubahan
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceAll('Exception: ', '')),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isSaving = false;
+          });
+        }
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Data Diri'),
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      );
+    }
+    
+    if (_user == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Data Diri'),
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(child: Text('Gagal memuat data')),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Data Diri'),
@@ -82,12 +148,12 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                     CircleAvatar(
                       radius: 50,
                       backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                      backgroundImage: (DummyData.currentUser.imageUrl != null &&
-                              DummyData.currentUser.imageUrl!.isNotEmpty)
-                          ? NetworkImage(DummyData.currentUser.imageUrl!)
+                      backgroundImage: (_user!.imageUrl != null &&
+                              _user!.imageUrl!.isNotEmpty)
+                          ? NetworkImage(_user!.imageUrl!)
                           : null,
-                      child: (DummyData.currentUser.imageUrl == null ||
-                              DummyData.currentUser.imageUrl!.isEmpty)
+                      child: (_user!.imageUrl == null ||
+                              _user!.imageUrl!.isEmpty)
                           ? const Icon(Icons.person, size: 50, color: AppColors.primary)
                           : null,
                     ),
@@ -185,10 +251,12 @@ class _PersonalDataScreenState extends State<PersonalDataScreen> {
                     borderRadius: BorderRadius.circular(AppConstants.radiusM),
                   ),
                 ),
-                child: const Text(
-                  'Simpan Perubahan',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                child: _isSaving 
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text(
+                      'Simpan Perubahan',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
               ),
             ],
           ),

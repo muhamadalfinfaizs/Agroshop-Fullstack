@@ -31,7 +31,6 @@ export class UsersService {
         password: hashedPassword,
         imageUrl: createUserDto.imageUrl || '', // Default string kosong
         phone: createUserDto.phone || '', // Default string kosong
-        address: createUserDto.address || '', // Default string kosong
       },
     });
     return {
@@ -48,9 +47,8 @@ export class UsersService {
         email: true,
         name: true,
         phone: true,
-        address: true,
         imageUrl: true,
-        // Hapus role, createdAt, dan updatedAt jika memang tidak ada di database Anda
+        role: true,
       },
     });
 

@@ -3,6 +3,7 @@ import '../../core/app_colors.dart';
 import '../../services/api_service.dart';
 import '../main_navigation_screen.dart';
 import 'login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -22,16 +23,34 @@ class _SplashScreenState extends State<SplashScreen> {
     // Tambahkan delay sedikit agar logo aplikasi sempat terlihat (seperti aplikasi pro)
     await Future.delayed(const Duration(seconds: 2));
 
-    // Ambil token dari SharedPreferences via ApiService
     final token = await ApiService.getToken();
 
     if (mounted) {
       if (token != null && token.isNotEmpty) {
-        // Jika token ada, berarti sudah login. Lanjut ke Halaman Utama!
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
-        );
+        try {
+          // Validasi token ke backend
+          await ApiService.getProfile();
+          
+          // Jika sukses, lanjut ke Halaman Utama
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
+            );
+          }
+        } catch (e) {
+          // Jika token tidak valid / user dihapus (reset db)
+          // Hapus token yang tersimpan
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('jwt_token');
+
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+            );
+          }
+        }
       } else {
         // Jika token tidak ada, berarti belum login. Arahkan ke Login!
         Navigator.pushReplacement(

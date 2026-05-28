@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
-import '../../services/api_service.dart'; // Import Api Service
+import '../../services/api_service.dart';
 import '../main_navigation_screen.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -95,7 +96,7 @@ Future<void> _handleLogin() async {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Spacer(flex: 2),
+              const Spacer(flex: 1),
               
               // Logo & App Name
               Center(
@@ -120,7 +121,7 @@ Future<void> _handleLogin() async {
                         color: AppColors.primary,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     Text(
                       'AgroShop',
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
@@ -137,7 +138,7 @@ Future<void> _handleLogin() async {
                 ),
               ),
               
-              const Spacer(flex: 1),
+              const SizedBox(height: 16),
               
               // Welcome Text
               Text(
@@ -152,7 +153,7 @@ Future<void> _handleLogin() async {
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
               
               // Email Field
               TextField(
@@ -232,43 +233,7 @@ Future<void> _handleLogin() async {
                 ),
               ),
               
-              const SizedBox(height: 24),
-              
-              // Social Login Divider
-              Row(
-                children: [
-                  const Expanded(child: Divider()),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'Atau login dengan',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                  const Expanded(child: Divider()),
-                ],
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Social Buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _socialButton(
-                    icon: Icons.g_mobiledata,
-                    label: 'Google',
-                    onTap: _isLoading ? () {} : () {},
-                  ),
-                  _socialButton(
-                    icon: Icons.facebook,
-                    label: 'Facebook',
-                    onTap: _isLoading ? () {} : () {},
-                  ),
-                ],
-              ),
-              
-              const Spacer(flex: 2),
+              const Spacer(flex: 1),
               
               // Register Link
               Row(
@@ -276,7 +241,12 @@ Future<void> _handleLogin() async {
                 children: [
                   const Text('Belum punya akun?'),
                   TextButton(
-                    onPressed: _isLoading ? null : () {},
+                    onPressed: _isLoading ? null : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                      );
+                    },
                     child: const Text(
                       'Daftar Sekarang',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -292,32 +262,5 @@ Future<void> _handleLogin() async {
     );
   }
 
-  Widget _socialButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.divider),
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 28, color: AppColors.textPrimary),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+
 }

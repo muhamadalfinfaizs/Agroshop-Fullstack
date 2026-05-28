@@ -52,7 +52,6 @@ export class AuthService {
         role: user.role,
         phone: user.phone,
         imageUrl: user.imageUrl,
-        address: user.address,
       },
       token: token,
     };
@@ -85,18 +84,6 @@ export class AuthService {
         password: hashedPassword,
         phone: registerDto.phone,
         imageUrl: registerDto.imageUrl,
-        address: registerDto.address,
-        addresses: registerDto.address
-          ? {
-              create: {
-                label: 'Utama',
-                name: registerDto.name,
-                phone: registerDto.phone ?? '-',
-                detail: registerDto.address,
-                isDefault: true,
-              },
-            }
-          : undefined,
       },
     });
 
@@ -122,7 +109,6 @@ export class AuthService {
         role: true,
         phone: true,
         imageUrl: true,
-        address: true,
         addresses: {
           select: {
             id: true,
@@ -178,7 +164,6 @@ export class AuthService {
         email: updateProfileDto.email,
         phone: updateProfileDto.phone,
         imageUrl: updateProfileDto.imageUrl,
-        address: updateProfileDto.address,
       },
       select: {
         id: true,
@@ -187,7 +172,6 @@ export class AuthService {
         role: true,
         phone: true,
         imageUrl: true,
-        address: true,
         addresses: {
           select: {
             id: true,

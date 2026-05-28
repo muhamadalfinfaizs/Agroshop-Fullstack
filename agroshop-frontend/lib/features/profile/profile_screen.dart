@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_constants.dart';
-import '../../models/dummy_data.dart';
+
 import '../../models/user.dart';
 import '../../services/api_service.dart';
 import '../auth/login_screen.dart';
 import 'personal_data_screen.dart';
 import 'address_screen.dart';
 import 'order_history_screen.dart';
+import 'tracking_screen.dart';
 
 /// Profile Screen - Menampilkan data user dan menu-menu terkait
 class ProfileScreen extends StatefulWidget {
@@ -32,19 +33,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final profile = await ApiService.getProfile();
       if (mounted) {
-        // Sinkronkan ke DummyData
-        DummyData.currentUser = User(
-          id: profile.id,
-          name: DummyData.currentUser.name == 'Budi Petani' ? profile.name : DummyData.currentUser.name,
-          email: profile.email,
-          role: profile.role,
-          phone: DummyData.currentUser.phone ?? profile.phone,
-          imageUrl: profile.imageUrl ?? DummyData.currentUser.imageUrl,
-          address: DummyData.currentUser.address ?? profile.address,
-        );
-        
         setState(() {
-          _user = DummyData.currentUser;
+          _user = profile;
           _isLoading = false;
         });
       }
@@ -52,7 +42,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       debugPrint("Error fetching profile: $e");
       if (mounted) {
         setState(() {
-          _user = DummyData.currentUser;
           _isLoading = false;
         });
       }
@@ -67,7 +56,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
-    final user = _user ?? DummyData.currentUser;
+    if (_user == null) {
+      return const Scaffold(
+        body: Center(child: Text('Gagal memuat profil')),
+      );
+    }
+
+    final user = _user!;
 
     return Scaffold(
       appBar: AppBar(
@@ -143,18 +138,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       const SizedBox(height: AppConstants.paddingM),
-                      // Edit profile button
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          _showComingSoonSnackbar(context, 'Edit Profil');
-                        },
-                        icon: const Icon(Icons.edit, size: 18),
-                        label: const Text('Edit Profil'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white),
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -170,7 +153,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildMenuSection(BuildContext context) {
-    final user = _user ?? DummyData.currentUser;
     return Padding(
       padding: const EdgeInsets.all(AppConstants.paddingM),
       child: Column(
@@ -196,7 +178,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _MenuItem(
               icon: Icons.location_on_outlined,
               title: 'Alamat Pengiriman',
-              subtitle: (user.address != null && user.address!.isNotEmpty) ? user.address! : 'Kelola alamat pengiriman',
+              subtitle: 'Kelola alamat pengiriman',
               onTap: () async {
                 final result = await Navigator.push(
                   context,
@@ -216,7 +198,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildMenuCard([
             _MenuItem(
               icon: Icons.shopping_bag_outlined,
-              title: 'Pesanan Saya',
+              title: 'Riwayat Pesanan',
               subtitle: 'Lihat riwayat pesanan',
               onTap: () {
                 Navigator.push(
@@ -228,43 +210,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _MenuItem(
               icon: Icons.local_shipping_outlined,
               title: 'Pengiriman',
-              subtitle: 'Lacak pengiriman',
-              onTap: () => _showComingSoonSnackbar(context, 'Pengiriman'),
+              subtitle: 'Lacak pengiriman pesanan aktif',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const TrackingScreen()),
+                );
+              },
             ),
           ]),
 
-          const SizedBox(height: AppConstants.paddingL),
-
-          // Lainnya Section
-          _buildSectionTitle('Lainnya'),
-          _buildMenuCard([
-            _MenuItem(
-              icon: Icons.notifications_outlined,
-              title: 'Notifikasi',
-              subtitle: 'Pengaturan notifikasi',
-              onTap: () => _showComingSoonSnackbar(context, 'Notifikasi'),
-            ),
-            _MenuItem(
-              icon: Icons.help_outline,
-              title: 'Bantuan',
-              subtitle: 'Pusat bantuan & FAQ',
-              onTap: () => _showComingSoonSnackbar(context, 'Bantuan'),
-            ),
-            _MenuItem(
-              icon: Icons.info_outline,
-              title: 'Tentang Kami',
-              subtitle: 'Informasi aplikasi',
-              onTap: () => _showAboutDialog(context),
-            ),
-          ]),
-
-          const SizedBox(height: AppConstants.paddingL),
+          const SizedBox(height: 32),
 
           // Logout Button
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () => _showLogoutDialog(context),
+              onPressed: () => _showLogoutDialog(),
               icon: const Icon(Icons.logout, color: AppColors.error),
               label: const Text(
                 'Keluar',
@@ -356,66 +318,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showComingSoonSnackbar(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature akan segera tersedia!'),
-        backgroundColor: AppColors.primary,
-      ),
-    );
-  }
 
-  void _showAboutDialog(BuildContext context) {
+  void _showLogoutDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppConstants.radiusL),
-        ),
-        title: const Row(
-          children: [
-            Icon(Icons.eco, color: AppColors.primary),
-            SizedBox(width: 8),
-            Text('Tentang AgroShop'),
-          ],
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'AgroShop adalah aplikasi toko online untuk kebutuhan pertanian.',
-              style: TextStyle(height: 1.5),
-            ),
-            SizedBox(height: 16),
-            Text('Versi: 1.0.0', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('© 2026 AgroShop. All rights reserved.'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Tutup'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Keluar?'),
         content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Batal'),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               // Hapus token JWT
               final prefs = await SharedPreferences.getInstance();
               await prefs.remove('jwt_token');

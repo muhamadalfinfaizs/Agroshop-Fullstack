@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
 import '../core/app_constants.dart';
+import '../core/utils/currency_format.dart';
 
 /// Reusable Price Tag widget
 /// Menampilkan harga dengan opsi diskon
@@ -33,7 +34,7 @@ class PriceTag extends StatelessWidget {
         children: [
           // Discount price
           Text(
-            _formatPrice(discountPrice!),
+            'Rp ${formatPrice(discountPrice!)}',
             style: priceStyle ??
                 TextStyle(
                   fontSize: compact ? 14 : 16,
@@ -44,7 +45,7 @@ class PriceTag extends StatelessWidget {
           const SizedBox(width: AppConstants.paddingS),
           // Original price
           Text(
-            _formatPrice(price),
+            'Rp ${formatPrice(price)}',
             style: discountStyle ??
                 TextStyle(
                   fontSize: compact ? 12 : 14,
@@ -80,7 +81,7 @@ class PriceTag extends StatelessWidget {
 
     // No discount
     return Text(
-      _formatPrice(price),
+      'Rp ${formatPrice(price)}',
       style: priceStyle ??
           TextStyle(
             fontSize: compact ? 14 : 16,
@@ -90,30 +91,6 @@ class PriceTag extends StatelessWidget {
     );
   }
 
-  String _formatPrice(double price) {
-    if (compact) {
-      if (price >= 1000000) {
-        return 'Rp ${(price / 1000000).toStringAsFixed(1)}jt';
-      } else if (price >= 1000) {
-        return 'Rp ${(price / 1000).toStringAsFixed(0)}rb';
-      }
-    }
-    return 'Rp ${_formatNumber(price)}';
-  }
-
-  String _formatNumber(double number) {
-    String result = number.toStringAsFixed(0);
-    StringBuffer sb = StringBuffer();
-    int count = 0;
-    for (int i = result.length - 1; i >= 0; i--) {
-      if (count > 0 && count % 3 == 0) {
-        sb.write('.');
-      }
-      sb.write(result[i]);
-      count++;
-    }
-    return sb.toString().split('').reversed.join();
-  }
 
   int _getDiscountPercent() {
     if (!hasDiscount) return 0;

@@ -43,7 +43,7 @@ class Product {
       name: json['name'] as String,
       description: json['description'] as String,
       price: (json['price'] as num).toDouble(),
-      discountPrice: json['discountPrice'] != null
+      discountPrice: (json['discountPrice'] != null && (json['discountPrice'] as num) > 0)
           ? (json['discountPrice'] as num).toDouble()
           : null,
       imageUrl: json['imageUrl'] as String,

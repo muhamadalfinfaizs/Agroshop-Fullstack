@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_constants.dart';
@@ -9,7 +10,7 @@ import '../cart/cart_screen.dart';
 import '../../models/category.dart';
 import '../../models/product.dart';
 import '../../services/api_service.dart';
-import '../main_navigation_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,6 +28,14 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Product> _featuredProducts = [];
   List<Product> _latestProducts = [];
   List<dynamic> _banners = [];
+
+  // --- SEARCH VARIABLES ---
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
+  String _searchQuery = '';
+  List<Product> _searchResults = [];
+  bool _isSearching = false;
+  bool _isSearchVisible = false;
 
   @override
   void initState() {
@@ -88,17 +97,6 @@ class _HomeScreenState extends State<HomeScreen> {
             content: Text('${product.name} ditambahkan ke keranjang!'),
             backgroundColor: AppColors.success,
             duration: const Duration(seconds: 3), // Durasi 3 detik
-            behavior: SnackBarBehavior.floating, // Melayang
-            action: SnackBarAction(
-              label: 'Lihat',
-              textColor: Colors.white,
-              onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar(); // Langsung tutup snackbar
-                
-                // Cari Navigation Bawah, lalu paksa pindah ke Tab 2 (Keranjang)
-                context.findAncestorStateOfType<MainNavigationScreenState>()?.switchTab(2);
-              },
-            ),
           ),
         );
       }
@@ -114,9 +112,44 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _performSearch(String query) async {
+    setState(() => _isSearching = true);
+    try {
+      final results = await ApiService.getProducts(search: query);
+      if (mounted && _searchQuery == query) {
+        setState(() {
+          _searchResults = results;
+          _isSearching = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSearching = false);
+      }
+    }
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      setState(() {
+        _searchQuery = query;
+      });
+      if (query.isNotEmpty) {
+        _performSearch(query);
+      } else {
+        setState(() {
+          _searchResults = [];
+        });
+      }
+    });
+  }
+
   @override
   void dispose() {
     _bannerController.dispose();
+    _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
@@ -125,7 +158,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: _isLoading 
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : CustomScrollView(
+          : RefreshIndicator(
+              onRefresh: _fetchHomeData,
+              color: AppColors.primary,
+              child: CustomScrollView(
               slivers: [
                 // App Bar
                 SliverAppBar(
@@ -133,21 +169,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   floating: true,
                   pinned: true,
                   backgroundColor: AppColors.primary,
-                  flexibleSpace: FlexibleSpaceBar(
-                    title: const Text(
-                      AppConstants.appName,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                  centerTitle: false,
+                  title: const Text(
+                    AppConstants.appName,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
-                    background: Container(
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [AppColors.primaryDark, AppColors.primary],
-                        ),
+                  ),
+                  flexibleSpace: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppColors.primaryDark, AppColors.primary],
                       ),
                     ),
                   ),
@@ -155,56 +190,155 @@ class _HomeScreenState extends State<HomeScreen> {
                     IconButton(
                       icon: const Icon(Icons.search, color: Colors.white),
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Fitur search coming soon!')),
-                        );
+                        setState(() {
+                          _isSearchVisible = !_isSearchVisible;
+                          if (!_isSearchVisible) {
+                            _searchController.clear();
+                            _onSearchChanged(''); // Reset search
+                          }
+                        });
                       },
                     ),
-                    Stack(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.shopping_cart, color: Colors.white),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const CartScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                        // Nanti cart item ini juga akan kita sambungkan ke API
-                        Positioned(
-                          right: 8,
-                          top: 8,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: AppColors.accent,
-                              shape: BoxShape.circle,
+                    ValueListenableBuilder<int>(
+                      valueListenable: ApiService.cartBadgeCount,
+                      builder: (context, count, child) {
+                        return Stack(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.shopping_cart, color: Colors.white),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const CartScreen(),
+                                  ),
+                                );
+                              },
                             ),
-                            child: const Text(
-                              '0', // Sementara diset 0 sebelum integrasi Cart API
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
+                            if (count > 0)
+                              Positioned(
+                                right: 8,
+                                top: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.accent,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 16,
+                                    minHeight: 16,
+                                  ),
+                                  child: Text(
+                                    count.toString(),
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                        ),
-                      ],
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),
 
-                // Banner Promo
+                // Search Bar (Hanya tampil jika _isSearchVisible true)
+                if (_isSearchVisible)
+                  SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppConstants.paddingM),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _onSearchChanged,
+                      decoration: InputDecoration(
+                        hintText: 'Cari produk...',
+                        prefixIcon: const Icon(Icons.search, color: AppColors.primary),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _onSearchChanged('');
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppConstants.radiusRound),
+                          borderSide: const BorderSide(color: AppColors.primaryLight),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppConstants.radiusRound),
+                          borderSide: const BorderSide(color: AppColors.primaryLight),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppConstants.radiusRound),
+                          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Banner Promo (Selalu tampil di bawah appbar/search)
                 if (_banners.isNotEmpty)
                   SliverToBoxAdapter(
                     child: _buildBanner(),
                   ),
 
-                // Section Title Kategori
+                if (_searchQuery.isNotEmpty) ...[
+                  // --- TAMPILAN PENCARIAN ---
+                  if (_isSearching)
+                    const SliverFillRemaining(
+                      child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                    )
+                  else if (_searchResults.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: Text('Tidak ada produk bernama "$_searchQuery"'),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingM),
+                      sliver: SliverGrid(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.6,
+                          crossAxisSpacing: AppConstants.gridSpacing,
+                          mainAxisSpacing: AppConstants.gridSpacing,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final product = _searchResults[index];
+                            return ProductCard(
+                              product: product,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ProductDetailScreen(product: product),
+                                  ),
+                                );
+                              },
+                              onAddToCart: () => _addToCart(product),
+                            );
+                          },
+                          childCount: _searchResults.length,
+                        ),
+                      ),
+                    ),
+                ] else ...[
+                  // --- TAMPILAN BERANDA NORMAL ---
+                  // Section Title Kategori
                 if (_categories.isNotEmpty)
                   SliverToBoxAdapter(
                     child: _buildSectionTitle('Kategori', onSeeAll: () {
@@ -262,12 +396,43 @@ class _HomeScreenState extends State<HomeScreen> {
                     sliver: _buildLatestProducts(),
                   ),
 
+                // Empty State jika benar-benar kosong
+                if (_categories.isEmpty && _latestProducts.isEmpty && !_isLoading)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.storefront_outlined,
+                            size: 80,
+                            color: AppColors.textHint.withValues(alpha: 0.5),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Belum ada kategori/produk yang ditambahkan',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+
                 // Bottom padding
                 const SliverToBoxAdapter(
                   child: SizedBox(height: AppConstants.paddingXL),
                 ),
               ],
             ),
+          ),
     );
   }
 
@@ -284,26 +449,27 @@ class _HomeScreenState extends State<HomeScreen> {
             margin: const EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppConstants.radiusL),
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppColors.primary,
-                  AppColors.primaryDark,
-                ],
-              ),
+              color: AppColors.primary,
+              image: banner['imageUrl'] != null && banner['imageUrl'].toString().isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage(banner['imageUrl']),
+                      fit: BoxFit.cover,
+                      colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.5), BlendMode.darken),
+                    )
+                  : null,
             ),
             child: Stack(
               children: [
-                Positioned(
-                  right: -20,
-                  bottom: -20,
-                  child: Icon(
-                    Icons.eco,
-                    size: 120,
-                    color: Colors.white.withValues(alpha: 0.1),
+                if (banner['imageUrl'] == null || banner['imageUrl'].toString().isEmpty)
+                  Positioned(
+                    right: -20,
+                    bottom: -20,
+                    child: Icon(
+                      Icons.eco,
+                      size: 120,
+                      color: Colors.white.withValues(alpha: 0.1),
+                    ),
                   ),
-                ),
                 Padding(
                   padding: const EdgeInsets.all(AppConstants.paddingL),
                   child: Column(

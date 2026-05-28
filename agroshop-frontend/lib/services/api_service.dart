@@ -7,6 +7,9 @@ import 'package:flutter/foundation.dart' hide Category;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../models/cart_item.dart';
+import '../models/address.dart';
+import '../models/order.dart';
+import '../models/shipment.dart';
 
 class ApiService {
   // Fungsi general untuk menangani respons dari Dosen
@@ -80,6 +83,36 @@ class ApiService {
     }
   }
 
+  // Fungsi Register
+  static Future<void> register({
+    required String name,
+    required String email,
+    required String password,
+    String phone = '',
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AppConstants.baseUrl}/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'phone': phone,
+          'password': password,
+        }),
+      );
+
+      final decodedJson = jsonDecode(response.body);
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception(decodedJson['message'] ?? 'Gagal melakukan pendaftaran');
+      }
+    } catch (e) {
+      debugPrint('Error Register API: $e');
+      rethrow;
+    }
+  }
+
   // Fungsi mengambil profile user dari /auth/profile
   static Future<User> getProfile() async {
     try {
@@ -102,6 +135,26 @@ class ApiService {
     }
   }
 
+  // Fungsi update profile
+  static Future<void> updateProfile(Map<String, dynamic> data) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.patch(
+        Uri.parse('${AppConstants.baseUrl}/auth/profile'),
+        headers: headers,
+        body: jsonEncode(data),
+      );
+      
+      final decodedJson = jsonDecode(response.body);
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception(decodedJson['message'] ?? 'Gagal update profil');
+      }
+    } catch (e) {
+      debugPrint('Error updateProfile API: $e');
+      rethrow;
+    }
+  }
+
   // --- HELPER UNTUK TOKEN BEARER --- //
   
   static Future<Map<String, String>> _getAuthHeaders() async {
@@ -112,7 +165,84 @@ class ApiService {
     };
   }
 
+  // --- ADDRESS ENDPOINTS --- //
+
+  static Future<List<Address>> getAddresses() async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.get(
+        Uri.parse('${AppConstants.baseUrl}/addresses'),
+        headers: headers,
+      );
+      final data = _processResponse(response);
+      return (data as List).map((json) => Address.fromJson(json)).toList();
+    } catch (e) {
+      debugPrint('Error getAddresses: $e');
+      return [];
+    }
+  }
+
+  static Future<void> addAddress(Map<String, dynamic> data) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.post(
+        Uri.parse('${AppConstants.baseUrl}/addresses'),
+        headers: headers,
+        body: jsonEncode(data),
+      );
+      _processResponse(response);
+    } catch (e) {
+      debugPrint('Error addAddress: $e');
+      rethrow;
+    }
+  }
+
+  static Future<void> updateAddress(int id, Map<String, dynamic> data) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.patch(
+        Uri.parse('${AppConstants.baseUrl}/addresses/$id'),
+        headers: headers,
+        body: jsonEncode(data),
+      );
+      _processResponse(response);
+    } catch (e) {
+      debugPrint('Error updateAddress: $e');
+      rethrow;
+    }
+  }
+
+  static Future<void> setDefaultAddress(int id) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.patch(
+        Uri.parse('${AppConstants.baseUrl}/addresses/$id/default'),
+        headers: headers,
+      );
+      _processResponse(response);
+    } catch (e) {
+      debugPrint('Error setDefaultAddress: $e');
+      rethrow;
+    }
+  }
+
+  static Future<void> deleteAddress(int id) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.delete(
+        Uri.parse('${AppConstants.baseUrl}/addresses/$id'),
+        headers: headers,
+      );
+      _processResponse(response);
+    } catch (e) {
+      debugPrint('Error deleteAddress: $e');
+      rethrow;
+    }
+  }
+
   // --- CART ENDPOINTS --- //
+
+  static final ValueNotifier<int> cartBadgeCount = ValueNotifier<int>(0);
 
   // Fungsi Tambah ke Keranjang (POST /cart)
   static Future<void> addToCart(int productId, int quantity) async {
@@ -130,6 +260,8 @@ class ApiService {
 
       // Kita pakai _processResponse karena biasanya endpoint ini pakai format standar dosen
       _processResponse(response); 
+      // Refresh badge count
+      getCart();
     } catch (e) {
       debugPrint('Error addToCart: $e');
       rethrow;
@@ -154,14 +286,18 @@ class ApiService {
 
         // Skenario 1: Backend langsung mengembalikan List [{}, {}]
         if (decodedJson is List) {
-          return decodedJson.map((json) => CartItem.fromJson(json)).toList();
+          final list = decodedJson.map((json) => CartItem.fromJson(json)).toList();
+          cartBadgeCount.value = list.length;
+          return list;
         }
 
         // Skenario 2: Menggunakan format dosen (data: [{}, {}])
         if (decodedJson is Map && decodedJson.containsKey('data')) {
           final data = decodedJson['data'];
           if (data is List) {
-            return data.map((json) => CartItem.fromJson(json)).toList();
+            final list = data.map((json) => CartItem.fromJson(json)).toList();
+            cartBadgeCount.value = list.length;
+            return list;
           }
         }
 
@@ -169,7 +305,9 @@ class ApiService {
         if (decodedJson is Map && decodedJson.containsKey('items')) {
           final items = decodedJson['items'];
           if (items is List) {
-            return items.map((json) => CartItem.fromJson(json)).toList();
+            final list = items.map((json) => CartItem.fromJson(json)).toList();
+            cartBadgeCount.value = list.length;
+            return list;
           }
         }
 
@@ -210,6 +348,7 @@ class ApiService {
         headers: headers,
       );
       _processResponse(response);
+      getCart();
     } catch (e) {
       debugPrint('Error removeCartItem: $e');
       rethrow;
@@ -225,9 +364,63 @@ class ApiService {
         headers: headers,
       );
       _processResponse(response);
+      cartBadgeCount.value = 0;
     } catch (e) {
       debugPrint('Error clearCart: $e');
       rethrow;
+    }
+  }
+
+  // --- ORDER & CHECKOUT ENDPOINTS --- //
+
+  static Future<void> checkout(int addressId, {List<int>? cartItemIds}) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final body = <String, dynamic>{'addressId': addressId};
+      if (cartItemIds != null && cartItemIds.isNotEmpty) {
+        body['cartItemIds'] = cartItemIds;
+      }
+      final response = await http.post(
+        Uri.parse('${AppConstants.baseUrl}/orders/checkout'),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+      _processResponse(response);
+    } catch (e) {
+      debugPrint('Error checkout: $e');
+      rethrow;
+    }
+  }
+
+  static Future<List<Order>> getOrders() async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.get(
+        Uri.parse('${AppConstants.baseUrl}/orders'),
+        headers: headers,
+      );
+      final data = _processResponse(response);
+      return (data as List).map((json) => Order.fromJson(json)).toList();
+    } catch (e) {
+      debugPrint('Error getOrders: $e');
+      return [];
+    }
+  }
+
+  // --- SHIPMENT ENDPOINTS --- //
+
+  static Future<Shipment?> getShipment(String orderCode) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.get(
+        Uri.parse('${AppConstants.baseUrl}/shipments/orders/$orderCode'),
+        headers: headers,
+      );
+      final data = _processResponse(response);
+      return Shipment.fromJson(data);
+    } catch (e) {
+      debugPrint('Error getShipment: $e');
+      return null;
     }
   }
 
@@ -244,14 +437,17 @@ class ApiService {
     }
   }
 
-  static Future<List<Product>> getProducts() async {
+  static Future<List<Product>> getProducts({String? search}) async {
     try {
-      final response = await http.get(Uri.parse('${AppConstants.baseUrl}${AppConstants.endpointProducts}'));
+      final url = search != null && search.isNotEmpty 
+          ? '${AppConstants.baseUrl}${AppConstants.endpointProducts}?search=$search' 
+          : '${AppConstants.baseUrl}${AppConstants.endpointProducts}';
+      final response = await http.get(Uri.parse(url));
       final data = _processResponse(response);
       
       return (data as List).map((json) => Product.fromJson(json)).toList();
     } catch (e) {
-      debugPrint('Error getCategories: $e');
+      debugPrint('Error getProducts: $e');
       return [];
     }
   }

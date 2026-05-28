@@ -60,21 +60,19 @@ export class ProductsService {
     };
   }
 
-  async findAll() {
+  async findAll(search?: string) {
     // Ambil semua produk beserta data kategorinya
     const rawData = await this.prisma.product.findMany({
+      where: search ? {
+        name: {
+          contains: search,
+        },
+      } : undefined,
       include: {
         category: true,
       },
     });
 
-    if (rawData.length === 0) {
-      throw new NotFoundException({
-        success: false,
-        message: process.env.NOT_DATA || 'Data produk kosong',
-        metadata: { status: HttpStatus.NOT_FOUND, total_data: 0 },
-      });
-    }
 
     const formattedData = rawData.map((product) => ({
       id: product.id,

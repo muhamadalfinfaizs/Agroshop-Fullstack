@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_constants.dart';
 import '../../models/product.dart';
-import '../../models/dummy_data.dart';
+
 import '../../widgets/custom_button.dart';
 import '../../widgets/price_tag.dart';
+import '../../core/utils/currency_format.dart';
 import '../cart/cart_screen.dart';
 import '../../services/api_service.dart';
 
@@ -25,6 +26,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _quantity = 1;
   int _currentImageIndex = 0;
   final PageController _imageController = PageController();
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   void dispose() {
@@ -55,38 +60,50 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   );
                 },
               ),
-              Stack(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.shopping_cart),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const CartScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: AppColors.accent,
-                        shape: BoxShape.circle,
+              ValueListenableBuilder<int>(
+                valueListenable: ApiService.cartBadgeCount,
+                builder: (context, count, child) {
+                  return Stack(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.shopping_cart),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const CartScreen(),
+                            ),
+                          );
+                        },
                       ),
-                      child: Text(
-                        '${DummyData.cartItems.length}',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                      if (count > 0)
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: AppColors.accent,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: Text(
+                              count.toString(),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                ],
+                    ],
+                  );
+                },
               ),
             ],
           ),
@@ -249,13 +266,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             });
           },
           itemBuilder: (context, index) {
-            return Container(
-              color: AppColors.primaryLight.withValues(alpha: 0.2),
-              child: Center(
-                child: Icon(
-                  Icons.eco,
-                  size: 100,
-                  color: AppColors.primary.withValues(alpha: 0.5),
+            return Image.network(
+              images[index],
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(
+                color: AppColors.primaryLight.withValues(alpha: 0.2),
+                child: Center(
+                  child: Icon(
+                    Icons.image_not_supported,
+                    size: 100,
+                    color: AppColors.primary.withValues(alpha: 0.5),
+                  ),
                 ),
               ),
             );
@@ -368,7 +389,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   ),
                   Text(
-                    'Rp ${_formatPrice(widget.product.displayPrice * _quantity)}',
+                    'Rp ${formatPrice(widget.product.displayPrice * _quantity)}',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -465,12 +486,5 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  String _formatPrice(double price) {
-    if (price >= 1000000) {
-      return '${(price / 1000000).toStringAsFixed(1)}jt';
-    } else if (price >= 1000) {
-      return '${(price / 1000).toStringAsFixed(0)}rb';
-    }
-    return price.toStringAsFixed(0);
-  }
+
 }

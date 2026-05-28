@@ -31,6 +31,9 @@ class CartItem {
         name: productJson['name'] as String? ?? 'Produk',
         description: '', // Kosongkan karena backend tidak mengirimkannya
         price: (productJson['price'] as num?)?.toDouble() ?? 0.0,
+        discountPrice: productJson['discountPrice'] != null 
+            ? (productJson['discountPrice'] as num).toDouble() 
+            : null,
         imageUrl: productJson['imageUrl'] as String? ?? '',
         images: [], // List kosong
         categoryId: 0,

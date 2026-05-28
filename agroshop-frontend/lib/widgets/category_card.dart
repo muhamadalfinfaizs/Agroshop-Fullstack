@@ -31,19 +31,20 @@ class CategoryCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // Icon
-              Container(
-                padding: const EdgeInsets.all(AppConstants.paddingS),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? Colors.white.withValues(alpha: 0.2)
-                      : _getCategoryColor(category.name).withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  _getCategoryIcon(category.icon),
-                  size: AppConstants.iconL,
-                  color: isSelected ? Colors.white : _getCategoryColor(category.name),
-                ),
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: isSelected
+                    ? Colors.white.withValues(alpha: 0.2)
+                    : AppColors.primary.withValues(alpha: 0.1),
+                backgroundImage: category.imageUrl.isNotEmpty
+                    ? NetworkImage(category.imageUrl)
+                    : null,
+                child: category.imageUrl.isEmpty
+                    ? Icon(
+                        Icons.category,
+                        color: isSelected ? Colors.white : AppColors.primary,
+                      )
+                    : null,
               ),
               const SizedBox(height: AppConstants.paddingS),
               // Name
@@ -76,41 +77,4 @@ class CategoryCard extends StatelessWidget {
     );
   }
 
-  IconData _getCategoryIcon(String iconName) {
-    switch (iconName.toLowerCase()) {
-      case 'eco':
-        return Icons.eco;
-      case 'grass':
-        return Icons.grass;
-      case 'agriculture':
-        return Icons.agriculture;
-      case 'bug_report':
-        return Icons.bug_report;
-      case 'compost':
-        return Icons.compost;
-      case 'local_florist':
-        return Icons.local_florist;
-      default:
-        return Icons.category;
-    }
-  }
-
-  Color _getCategoryColor(String categoryName) {
-    switch (categoryName.toLowerCase()) {
-      case 'pupuk':
-        return AppColors.fertilizer;
-      case 'bibit & benih':
-        return AppColors.seeds;
-      case 'alat pertanian':
-        return AppColors.tools;
-      case 'pestisida':
-        return AppColors.pesticides;
-      case 'pupuk organik':
-        return AppColors.primary;
-      case 'media tanam':
-        return AppColors.secondary;
-      default:
-        return AppColors.primary;
-    }
-  }
 }

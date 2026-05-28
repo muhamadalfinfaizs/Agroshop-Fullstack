@@ -11,13 +11,14 @@ import { UpdateAddressDto } from './dto/update-address.dto';
 
 @Injectable()
 export class AddressesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async create(userId: number, createAddressDto: CreateAddressDto) {
     try {
       const address = await this.prisma.$transaction(async (tx) => {
         const totalAddress = await tx.address.count({ where: { userId } });
-        const shouldBeDefault = createAddressDto.isDefault ?? totalAddress === 0;
+        const shouldBeDefault =
+          createAddressDto.isDefault ?? totalAddress === 0;
 
         if (shouldBeDefault) {
           await tx.address.updateMany({
@@ -40,7 +41,7 @@ export class AddressesService {
         if (createdAddress.isDefault) {
           await tx.user.update({
             where: { id: userId },
-            data: { address: createdAddress.detail, phone: createdAddress.phone },
+            data: { phone: createdAddress.phone },
           });
         }
 
@@ -111,7 +112,7 @@ export class AddressesService {
         if (updated.isDefault) {
           await tx.user.update({
             where: { id: userId },
-            data: { address: updated.detail, phone: updated.phone },
+            data: { phone: updated.phone },
           });
         }
 
@@ -150,7 +151,7 @@ export class AddressesService {
 
       await tx.user.update({
         where: { id: userId },
-        data: { address: updated.detail, phone: updated.phone },
+        data: { phone: updated.phone },
       });
 
       return updated;
@@ -180,10 +181,6 @@ export class AddressesService {
       });
 
       if (!nextDefault) {
-        await tx.user.update({
-          where: { id: userId },
-          data: { address: null },
-        });
         return;
       }
 
@@ -194,7 +191,7 @@ export class AddressesService {
 
       await tx.user.update({
         where: { id: userId },
-        data: { address: updatedDefault.detail, phone: updatedDefault.phone },
+        data: { phone: updatedDefault.phone },
       });
     });
 

@@ -3,5 +3,4 @@ export class UpdateProfileDto {
   email?: string;
   phone?: string;
   imageUrl?: string;
-  address?: string;
 }

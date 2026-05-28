@@ -1,0 +1,413 @@
+RINGKASAN UPDATE BACKEND AGROSHOP
+=================================
+
+File ini berisi catatan singkat tentang apa saja yang sudah ditambahkan di backend
+dan apa saja yang perlu dikerjakan oleh bagian frontend.
+
+
+1. KONDISI BACKEND SEBELUM DITAMBAHKAN
+--------------------------------------
+
+Sebelumnya backend sudah memiliki beberapa fitur utama, yaitu:
+
+1. Auth / Login
+   - User bisa login.
+   - User mendapatkan token JWT.
+
+2. Profile
+   - Sudah ada endpoint profile, tetapi sebelumnya data yang dikembalikan masih terbatas.
+   - Data seperti name, phone, imageUrl, dan address belum lengkap untuk kebutuhan halaman profile frontend.
+
+3. Category
+   - Backend sudah bisa menambah, melihat, mengubah, dan menghapus kategori.
+
+4. Product
+   - Backend sudah bisa menambah, melihat, mengubah, dan menghapus produk.
+
+5. Banner
+   - Backend sudah bisa menambah, melihat, mengubah, dan menghapus banner.
+
+6. Cart / Keranjang
+   - Backend sudah ada fitur keranjang.
+   - Namun kemudian disesuaikan lagi agar cart benar-benar mengikuti user yang sedang login.
+
+
+2. YANG SUDAH DITAMBAHKAN / DIPERBAIKI DI BACKEND
+-------------------------------------------------
+
+1. Profile user diperbaiki
+   Endpoint:
+   GET /auth/profile
+
+   Sekarang profile sudah mengembalikan data:
+   - id
+   - name
+   - email
+   - role
+   - phone
+   - imageUrl
+   - address
+   - addresses
+
+   Jadi frontend sudah bisa mengambil data profile dari backend, bukan hanya dari dummy data.
+
+
+2. Update profile ditambahkan
+   Endpoint:
+   PATCH /auth/profile
+
+   Contoh data:
+   {
+     "name": "Budi Petani",
+     "email": "budi@agroshop.test",
+     "phone": "081111111111",
+     "imageUrl": "https://picsum.photos/seed/budi/200/200",
+     "address": "Jl. Sawah No. 10, Bandung"
+   }
+
+   Fungsi endpoint ini adalah untuk edit data diri user.
+
+
+3. Cart disesuaikan dengan user login
+   Endpoint:
+   GET /cart
+   POST /cart
+   PATCH /cart/:id
+   DELETE /cart/:id
+   DELETE /cart
+
+   Perbaikan:
+   - Cart sekarang mengambil userId dari token login.
+   - User tidak bisa mengubah cart milik user lain.
+   - Sudah ada endpoint untuk menghapus semua isi cart.
+
+
+4. Riwayat pesanan ditambahkan
+   Endpoint:
+   POST /orders/checkout
+   GET /orders
+   GET /orders/:orderCode
+
+   Fungsi:
+   - Checkout dari isi cart.
+   - Menyimpan pesanan ke database.
+   - Menyimpan item pesanan.
+   - Menyimpan total harga.
+   - Menampilkan riwayat pesanan user.
+
+
+5. Alamat pengiriman multi data ditambahkan
+   Endpoint:
+   GET /addresses
+   POST /addresses
+   PATCH /addresses/:id
+   PATCH /addresses/:id/default
+   DELETE /addresses/:id
+
+   Fungsi:
+   - User bisa punya lebih dari satu alamat.
+   - Setiap alamat punya id sendiri.
+   - Contoh:
+     id 1 = Alamat Rumah
+     id 2 = Alamat Kantor
+   - User bisa memilih alamat utama.
+
+   Contoh data:
+   {
+     "label": "Rumah",
+     "name": "Budi Petani",
+     "phone": "081111111111",
+     "detail": "Jl. Sawah No. 10, Bandung",
+     "isDefault": true
+   }
+
+
+6. Checkout bisa memakai alamat tersimpan
+   Endpoint:
+   POST /orders/checkout
+
+   Contoh pakai alamat tersimpan:
+   {
+     "addressId": 1
+   }
+
+   Contoh pakai alamat langsung:
+   {
+     "address": "Jl. Sawah No. 10, Bandung"
+   }
+
+   Jadi nanti frontend bisa memilih alamat dari daftar alamat user.
+
+
+7. Lacak pengiriman / shipment ditambahkan
+   Endpoint:
+   GET /shipments/orders/:orderCode
+   PATCH /shipments/orders/:orderCode
+   POST /shipments/orders/:orderCode/events
+
+   Fungsi:
+   - Backend sudah punya data pengiriman untuk setiap order.
+   - Saat checkout berhasil, data pengiriman awal otomatis dibuat.
+   - User bisa melihat status pengiriman.
+   - Admin bisa mengubah status pengiriman.
+   - Admin bisa menambahkan riwayat perjalanan paket.
+
+   Status pengiriman:
+   - WAITING
+   - PACKED
+   - SHIPPED
+   - IN_TRANSIT
+   - DELIVERED
+   - CANCELLED
+
+
+8. Hak akses endpoint dirapikan
+   Perbaikan:
+   - Profile hanya bisa mengambil data akun sesuai token sendiri.
+   - Cart hanya bisa mengubah cart milik user yang login.
+   - Address hanya bisa mengubah alamat milik user yang login.
+   - Order hanya bisa melihat pesanan milik user yang login.
+   - Update/delete product hanya untuk admin.
+   - Update/delete banner hanya untuk admin.
+   - Endpoint users hanya untuk admin.
+
+
+3. FILE / MODULE BARU YANG DITAMBAHKAN DI BACKEND
+-------------------------------------------------
+
+1. Module orders
+   Lokasi:
+   agroshop-backend/src/orders
+
+   Fungsi:
+   Untuk checkout dan riwayat pesanan.
+
+
+2. Module addresses
+   Lokasi:
+   agroshop-backend/src/addresses
+
+   Fungsi:
+   Untuk menyimpan dan mengelola alamat pengiriman user.
+
+
+3. Module shipments
+   Lokasi:
+   agroshop-backend/src/shipments
+
+   Fungsi:
+   Untuk data pengiriman dan lacak pengiriman.
+
+
+4. Update database Prisma
+   Lokasi:
+   agroshop-backend/prisma/schema.prisma
+
+   Tabel/model baru:
+   - Order
+   - OrderItem
+   - Address
+   - Shipment
+   - ShipmentEvent
+
+
+5. CMS React basic ditambahkan
+   Lokasi:
+   agroshop-cms
+
+   Fungsi:
+   - Web admin/dashboard untuk kebutuhan CMS.
+   - Login admin.
+   - Kelola kategori.
+   - Kelola produk.
+   - Kelola banner.
+   - Lihat pesanan.
+   - Update pengiriman.
+   - Lihat data user.
+
+   Cara akses:
+   http://localhost:5174
+
+   Alur:
+   CMS React -> Gateway -> Backend -> Database
+
+   Panduan lengkap CMS:
+   docs/Panduan_CMS_Agroshop.txt
+
+
+4. YANG PERLU DILAKUKAN TEMAN FRONTEND
+--------------------------------------
+
+1. Halaman Profile
+   Yang perlu dilakukan:
+   - Ambil data profile dari endpoint GET /auth/profile.
+   - Tampilkan data name, email, phone, imageUrl, dan address.
+   - Jangan hanya mengandalkan DummyData.currentUser.
+
+
+2. Halaman Edit Data Diri
+   Yang perlu dilakukan:
+   - Saat user menyimpan perubahan, kirim data ke endpoint PATCH /auth/profile.
+   - Setelah berhasil update, refresh lagi data profile.
+
+   Endpoint:
+   PATCH /auth/profile
+
+
+3. Halaman Alamat Pengiriman
+   Yang perlu dilakukan:
+   - Ganti dummyAddresses menjadi data dari backend.
+   - Ambil daftar alamat dari GET /addresses.
+   - Tambah alamat memakai POST /addresses.
+   - Edit alamat memakai PATCH /addresses/:id.
+   - Hapus alamat memakai DELETE /addresses/:id.
+   - Pilih alamat utama memakai PATCH /addresses/:id/default.
+
+
+4. Checkout dari Cart
+   Yang perlu dilakukan:
+   - Saat user klik checkout, panggil POST /orders/checkout.
+   - Jika frontend sudah punya pilihan alamat, kirim addressId.
+   - Setelah checkout berhasil, arahkan user ke halaman riwayat pesanan atau tampilkan pesan berhasil.
+
+   Contoh body:
+   {
+     "addressId": 1
+   }
+
+
+5. Halaman Pesanan Saya / Riwayat Belanja
+   Yang perlu dilakukan:
+   - Ganti dummyOrders menjadi data dari backend.
+   - Ambil data dari GET /orders.
+   - Untuk detail pesanan, pakai GET /orders/:orderCode.
+
+
+6. Halaman Pengiriman / Lacak Pengiriman
+   Yang perlu dilakukan:
+   - Saat fitur ini dibuat, ambil data dari GET /shipments/orders/:orderCode.
+   - Tampilkan status pengiriman, nomor resi, kurir, dan riwayat perjalanan paket.
+
+   Catatan:
+   - Di frontend sebelumnya menu Pengiriman masih coming soon.
+   - Backend sekarang sudah disiapkan untuk fitur ini.
+
+
+7. Simpan token login
+   Yang perlu diperhatikan:
+   - Endpoint profile, cart, address, order, dan shipment butuh token.
+   - Header harus berisi:
+     Authorization: Bearer TOKEN_DARI_LOGIN
+
+
+8. Menggunakan gateway
+   Yang perlu dilakukan:
+   - Untuk koneksi frontend, disarankan memakai gateway.
+   - Base URL yang dipakai di frontend menjadi:
+     http://localhost:3003/api
+   - Backend utama tetap harus berjalan di:
+     http://localhost:3000
+   - Frontend tidak perlu langsung memanggil port 3000 jika gateway dipakai.
+   - Contoh:
+     GET /products di backend langsung menjadi GET /api/products lewat gateway.
+   - Token tetap dikirim seperti biasa lewat header Authorization.
+   - Cara ini dipakai agar alur project lebih mirip referensi dosen.
+
+   Alur:
+   Frontend -> Gateway -> Backend -> Database
+
+   Perbandingan base URL:
+   - Lewat gateway:
+     http://localhost:3003/api/products
+   - Langsung ke backend:
+     http://localhost:3000/products
+
+   Catatan:
+   - Untuk rekan frontend, cukup ubah baseUrl ke http://localhost:3003/api.
+   - Path endpoint tetap sama, misalnya /products, /cart, /orders, dan /auth/profile.
+   - Jika gateway belum dijalankan, frontend tidak bisa mengambil data lewat port 3003.
+
+
+5. CATATAN UNTUK TESTING
+------------------------
+
+Catatan endpoint lengkap untuk Apidog ada di file:
+docs/Catatan_Apidog_Backend_Agroshop.txt
+
+Urutan testing singkat:
+1. Register user.
+2. Login user.
+3. Copy token.
+4. Test GET /auth/profile.
+5. Tambah alamat dengan POST /addresses.
+6. Tambah produk ke cart dengan POST /cart.
+7. Checkout dengan POST /orders/checkout.
+8. Lihat riwayat pesanan dengan GET /orders.
+9. Lihat pengiriman dengan GET /shipments/orders/:orderCode.
+
+
+6. KESIMPULAN
+-------------
+
+Backend Agroshop sekarang sudah disiapkan agar sesuai dengan kebutuhan frontend.
+Fitur yang sebelumnya belum ada seperti riwayat pesanan, alamat pengiriman,
+dan lacak pengiriman sudah tersedia di backend.
+
+Gateway juga sudah disiapkan agar alur project lebih mirip dengan referensi dosen.
+Tugas frontend selanjutnya adalah mengganti data dummy menjadi data dari API backend
+atau lewat gateway.
+
+7. UPDATE TERBARU (PENAMBAHAN FITUR & LOGIKA INTI TAHAP 3)
+-----------------------------------------------------------
+
+Sejak pengecekan struktur terakhir, telah dilakukan perombakan dan penyempurnaan besar, yaitu:
+
+1. Perbaikan Bug & Logika Keranjang (Frontend & Backend):
+   - Harga Diskon: Perhitungan total di keranjang kini otomatis menggunakan harga diskon (jika ada), bukan harga normal.
+   - Bug Total Rp 0: Memperbaiki masalah pop-up notifikasi yang menampilkan "Total Rp 0" setelah checkout sukses.
+
+2. Checkout Selektif (Frontend & Backend):
+   - Pengguna kini bisa mencentang (checklist) barang mana saja di keranjang yang ingin dibayar.
+   - Hanya barang yang dicentang yang akan diproses menjadi pesanan dan dihapus dari keranjang.
+
+3. Logika Stok Krusial (Backend):
+   - Validasi Stok: Mencegah checkout jika stok produk lebih sedikit dari jumlah pesanan.
+   - Pengurangan Otomatis: Saat pesanan berhasil dibuat, stok produk di database kini otomatis berkurang.
+
+4. Ongkos Kirim Gratis (Frontend):
+   - Sistem kini menggratiskan ongkos kirim jika total belanja melebihi Rp 50.000.
+
+5. Fitur Pencarian (Frontend & Backend):
+   - Backend API produk sekarang mendukung query parameter pencarian (?search=keyword).
+   - Beranda aplikasi (Frontend) kini dilengkapi dengan kotak pencarian (disembunyikan di balik ikon kaca pembesar) yang responsif dan memiliki fitur debouncing.
+
+6. Pull-to-Refresh (Tarik ke Bawah) (Frontend):
+   - Mengatasi isu "data baru tidak langsung muncul", kini seluruh halaman (Beranda, Produk, Keranjang) dapat diperbarui cukup dengan ditarik ke bawah (seperti standar aplikasi e-commerce modern).
+
+7. Pemolesan Antarmuka (Frontend):
+   - Format harga kini seragam menggunakan titik ribuan (contoh: Rp 50.000).
+   - "Pesanan Saya" di halaman profil diubah menjadi "Riwayat Pesanan".
+   - Desain layout Login & Register dirapikan padding-nya agar lebih proporsional.
+
+8. UPDATE TERBARU (PENYEMPURNAAN UI & PERSIAPAN AI)
+---------------------------------------------------
+
+1. Perbaikan Rendering Gambar (Frontend):
+   - Sebelumnya frontend menggunakan ikon placeholder statis. Kini `product_card.dart`, `category_card.dart`, `home_screen.dart` (banner), dan `product_detail_screen.dart` telah sepenuhnya dimigrasikan untuk menggunakan `Image.network()` dan `CircleAvatar(backgroundImage: NetworkImage())`.
+   - Menambahkan `errorBuilder` fallback agar sistem tidak crash apabila URL gambar rusak atau gagal dimuat.
+   - Memperbaiki bug harga Rp 0 yang diakibatkan oleh parsial "discountPrice = 0" (sekarang angka 0 otomatis dianggap null / tidak ada diskon).
+
+2. Pembersihan UI dan UX (Frontend):
+   - Menghapus tombol Filter bundar (FAB) yang tumpang tindih di halaman Produk, karena filter sesungguhnya sudah ada di Top Bar (ikon tune/slider).
+   - Memberi jarak (padding) ekstra di atas tombol Logout di halaman Profil agar tidak mudah tidak sengaja tertekan.
+   - Menghapus method yang tidak terpakai (dead code) pada card komponen untuk merapikan Linter Dart.
+
+3. Persiapan Tombol Chatbot AI (Frontend):
+   - Ditambahkan sebuah Floating Action Button (FAB) berikon Bintang / Sparkles (`Icons.auto_awesome`) berwarna hijau gelap di `MainNavigationScreen`.
+   - Tombol ini diposisikan mengambang secara global di atas Bottom Navigation Bar, namun disembunyikan (hidden) secara otomatis ketika user berada di tab Profil.
+   - Tombol saat ini memunculkan SnackBar pemberitahuan dan siap untuk segera dihubungkan ke UI Chat Room AI sesungguhnya.
+
+4. Regenerasi Database Total (Backend):
+   - Seluruh database telah di-reset mulai dari ID 1 menggunakan `npx prisma migrate reset`.
+   - Skrip `seed.ts` diubah total dari URL Unsplash (yang sering memblokir akses direct link) menjadi `picsum.photos/seed/` yang dijamin 100% unik dan muncul di frontend.
+   - Akun Super Admin dan Farmer bawaan disisipkan langsung ke dalam seed agar fresh install bisa langsung digunakan.

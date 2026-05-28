@@ -1,0 +1,104 @@
+PANDUAN CMS AGROSHOP
+====================================
+
+File ini berisi panduan singkat untuk menjalankan dan menggunakan CMS Agroshop yang baru saja di-upgrade ke versi premium. CMS adalah dasbor admin untuk mengelola seluruh data aplikasi Agroshop.
+
+
+1. FUNGSI & PEMBARUAN CMS
+-------------------------
+CMS secara eksklusif HANYA bisa digunakan oleh akun dengan role ADMIN.
+
+Pembaruan Utama (Versi Terbaru):
+- Desain Premium: Tampilan diperbarui dengan tema hijau, kartu melayang (soft shadows), dan ikon dari Lucide React.
+- Struktur Modular: Dibangun menggunakan React Router DOM untuk navigasi halaman yang lebih mulus.
+- Keamanan Login: Akun FARMER/USER biasa akan ditolak masuk sejak di halaman login.
+- UX Formulir: Form penambahan/pengeditan data disembunyikan secara bawaan agar rapi, dan bisa dimunculkan dengan menekan tombol "Tambah Data" atau ikon "Edit".
+- Manajemen Pesanan: Tersedia fitur baru untuk MENGHAPUS pesanan pelanggan (fitur yang krusial untuk membatalkan order).
+
+Fitur Utama:
+1. Login Admin (Strikt).
+2. Dashboard Ringkasan.
+3. Kelola Kategori (CRUD Lengkap).
+4. Kelola Produk (CRUD Lengkap).
+5. Kelola Banner (CRUD Lengkap).
+6. Lihat & Hapus Pesanan (Manajemen Status Pengiriman).
+7. Lihat Data Pengguna (Hanya menampilkan info krusial: ID, Nama, Email, No. HP).
+
+
+2. STRUKTUR PROJECT
+-------------------
+Backend: agroshop-backend
+Gateway: agroshop-gateway
+Frontend user: agroshop-frontend
+CMS admin: agroshop-cms
+
+Alur koneksi CMS:
+CMS React -> Gateway (port 3003) -> Backend (port 3000) -> Database
+
+
+3. CARA MENJALANKAN CMS
+-----------------------
+Jalankan 3 terminal secara bersamaan:
+
+Terminal 1 - Backend:
+cd C:\ProjectFlutter\Agroshop\agroshop-backend
+npm run start (Berjalan di http://localhost:3000)
+
+Terminal 2 - Gateway:
+cd C:\ProjectFlutter\Agroshop\agroshop-gateway
+npm run start (Berjalan di http://localhost:3003/api)
+
+Terminal 3 - CMS:
+cd C:\ProjectFlutter\Agroshop\agroshop-cms
+npm run dev (Berjalan di http://localhost:5174)
+
+
+4. LOGIN CMS (PENTING!)
+-----------------------
+Anda WAJIB login memakai akun dengan role ADMIN. Jika Anda mencoba login memakai akun FARMER/GUEST, sistem akan menampilkan notifikasi penolakan akses.
+
+Contoh akun admin:
+Email: admin@agroshop.test
+Password: admin123
+
+
+5. PENJELASAN MENU & CARA MENGGUNAKAN
+-------------------------------------
+1. Dashboard
+   Menu ringkasan bergaya modern dengan ikon untuk navigasi cepat.
+
+2. Kategori, Produk, & Banner
+   - Secara default, halaman hanya menampilkan tabel data.
+   - Untuk menambahkan data baru, klik tombol biru "Tambah [Kategori/Produk/Banner]" di pojok kanan atas. Panel form akan muncul.
+   - Untuk mengedit, klik ikon pensil pada tabel.
+   - Untuk menghapus, klik ikon tempat sampah (akan muncul konfirmasi keamanan).
+
+3. Pesanan
+   - Menampilkan seluruh order pelanggan.
+   - Anda bisa memperbarui status pengiriman melalui pilihan dropdown (contoh: Dikemas -> Dikirim).
+   - [BARU] Anda bisa MENGHAPUS pesanan dengan mengeklik tombol "Hapus" merah muda di ujung kanan baris.
+
+4. User (Pengguna)
+   - Daftar seluruh akun terdaftar.
+   - Kolom Role sudah dihilangkan untuk mengurangi kebingungan, karena semua data yang tampil umumnya adalah pembeli (Farmer).
+
+
+6. LOGIKA PENGIRIMAN (SHIPMENT)
+-------------------------------
+Tombol Pengiriman dipakai admin untuk merespon pesanan dari aplikasi.
+Status yang tersedia:
+- WAITING    = Menunggu Diproses
+- PACKED     = Dikemas
+- SHIPPED    = Dikirim
+- IN_TRANSIT = Dalam Perjalanan
+- DELIVERED  = Terkirim
+- CANCELLED  = Dibatalkan
+
+*Sistem pengiriman ini sudah terhubung dengan backend, di mana perubahan status di CMS akan dapat dipantau langsung oleh pembeli lewat aplikasi Flutter.*
+
+
+7. CATATAN UNTUK PENGEMBANG (FRONTEND / BACKEND)
+------------------------------------------------
+1. Gateway (Port 3003) adalah pintu gerbang wajib untuk CMS. Jika Gateway mati, CMS tidak akan bisa mengambil data.
+2. Token otentikasi selalu disimpan di `localStorage` dengan kunci `agroshop_cms_session`.
+3. CMS sekarang menggunakan `react-router-dom`, pastikan dependencies Node modules sudah di-install menggunakan `npm install` sebelum melakukan build.

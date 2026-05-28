@@ -16,7 +16,12 @@ export class OrdersService {
     try {
       const order = await this.prisma.$transaction(async (tx) => {
         const cartItems = await tx.cartItem.findMany({
-          where: { userId },
+          where: { 
+            userId,
+            ...(createOrderDto.cartItemIds && createOrderDto.cartItemIds.length > 0 
+                ? { id: { in: createOrderDto.cartItemIds } } 
+                : {})
+          },
           include: { product: true },
         });
 
@@ -26,6 +31,17 @@ export class OrdersService {
             message: 'Keranjang masih kosong',
             metadata: { status: HttpStatus.BAD_REQUEST },
           });
+        }
+
+        // 1. VALIDASI STOK
+        for (const item of cartItems) {
+          if (item.product.stock < item.quantity) {
+            throw new BadRequestException({
+              success: false,
+              message: `Stok produk ${item.product.name} tidak mencukupi (Tersisa: ${item.product.stock})`,
+              metadata: { status: HttpStatus.BAD_REQUEST },
+            });
+          }
         }
 
         const total = cartItems.reduce((sum, item) => {
@@ -71,7 +87,21 @@ export class OrdersService {
           },
         });
 
-        await tx.cartItem.deleteMany({ where: { userId } });
+        await tx.cartItem.deleteMany({ 
+          where: { 
+            id: { in: cartItems.map((item) => item.id) } 
+          } 
+        });
+
+        // 2. PENGURANGAN STOK
+        await Promise.all(
+          cartItems.map((item) =>
+            tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { decrement: item.quantity } },
+            })
+          )
+        );
 
         return newOrder;
       });

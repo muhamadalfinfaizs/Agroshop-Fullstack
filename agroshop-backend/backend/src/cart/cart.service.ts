@@ -64,7 +64,7 @@ export class CartService {
       where: { userId },
       include: {
         product: {
-          select: { name: true, price: true, imageUrl: true },
+          select: { name: true, price: true, discountPrice: true, imageUrl: true },
         },
         user: {
           select: { name: true, email: true },
@@ -85,7 +85,7 @@ export class CartService {
       const cart = await this.prisma.cartItem.findFirst({
         where: { id, userId },
         include: {
-          product: { select: { name: true, price: true, imageUrl: true } },
+          product: { select: { name: true, price: true, discountPrice: true, imageUrl: true } },
           user: { select: { name: true, email: true } },
         },
       });

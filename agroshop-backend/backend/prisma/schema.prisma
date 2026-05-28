@@ -52,7 +52,6 @@ model User {
   role        Role      @default(FARMER) 
   phone       String?   
   imageUrl    String?   
-  address     String?   @db.Text
   joinedDate  DateTime? @default(now())
 
   cartItems  CartItem[]

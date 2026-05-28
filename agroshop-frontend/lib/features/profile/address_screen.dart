@@ -1,62 +1,76 @@
 import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
-import '../../core/app_constants.dart';
-import '../../models/dummy_data.dart';
-import '../../models/user.dart';
+import '../../models/address.dart';
+import '../../services/api_service.dart';
 
 class AddressScreen extends StatefulWidget {
-  const AddressScreen({super.key});
+  final bool isSelectionMode;
+  const AddressScreen({super.key, this.isSelectionMode = false});
 
   @override
   State<AddressScreen> createState() => _AddressScreenState();
 }
 
 class _AddressScreenState extends State<AddressScreen> {
-  // Ambil list alamat dari DummyData
-  List<Map<String, dynamic>> get _addresses => DummyData.dummyAddresses;
+  List<Address> _addresses = [];
+  bool _isLoading = true;
 
-  void _refresh() {
-    setState(() {});
+  @override
+  void initState() {
+    super.initState();
+    _fetchAddresses();
+  }
+
+  Future<void> _fetchAddresses() async {
+    setState(() => _isLoading = true);
+    try {
+      final addresses = await ApiService.getAddresses();
+      if (mounted) {
+        setState(() {
+          _addresses = addresses;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal mengambil data alamat')),
+        );
+      }
+    }
   }
 
   // Set Alamat Utama / Default
-  void _setDefaultAddress(int id) {
-    setState(() {
-      String newMainAddressText = '';
-      for (var addr in _addresses) {
-        if (addr['id'] == id) {
-          addr['isDefault'] = true;
-          newMainAddressText = addr['detail'];
-        } else {
-          addr['isDefault'] = false;
-        }
+  Future<void> _setDefaultAddress(int id) async {
+    try {
+      await ApiService.setDefaultAddress(id);
+      await _fetchAddresses(); // Refresh data
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Alamat utama berhasil diubah!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
       }
-
-      // Sinkronkan alamat default ke currentUser
-      final currentUser = DummyData.currentUser;
-      DummyData.currentUser = User(
-        id: currentUser.id,
-        name: currentUser.name,
-        email: currentUser.email,
-        role: currentUser.role,
-        phone: currentUser.phone,
-        imageUrl: currentUser.imageUrl,
-        address: newMainAddressText,
-      );
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Alamat utama berhasil diubah!'),
-        backgroundColor: AppColors.success,
-      ),
-    );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   // Hapus Alamat
-  void _deleteAddress(int id) {
-    final target = _addresses.firstWhere((element) => element['id'] == id);
-    if (target['isDefault'] == true) {
+  Future<void> _deleteAddress(int id) async {
+    final target = _addresses.firstWhere((element) => element.id == id);
+    if (target.isDefault == true) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Alamat utama tidak dapat dihapus!'),
@@ -66,28 +80,48 @@ class _AddressScreenState extends State<AddressScreen> {
       return;
     }
 
-    setState(() {
-      _addresses.removeWhere((element) => element['id'] == id);
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Alamat berhasil dihapus!'),
-        backgroundColor: AppColors.success,
-      ),
-    );
+    try {
+      await ApiService.deleteAddress(id);
+      await _fetchAddresses();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Alamat berhasil dihapus!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal hapus: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   // Tampilkan Bottom Sheet untuk Tambah / Edit Alamat
-  void _showAddressForm({Map<String, dynamic>? addressToEdit}) {
+  void _showAddressForm({Address? addressToEdit}) {
     final isEdit = addressToEdit != null;
     final formKey = GlobalKey<FormState>();
 
-    final labelController = TextEditingController(text: isEdit ? addressToEdit['label'] : '');
-    final nameController = TextEditingController(text: isEdit ? addressToEdit['name'] : '');
-    final phoneController = TextEditingController(text: isEdit ? addressToEdit['phone'] : '');
-    final detailController = TextEditingController(text: isEdit ? addressToEdit['detail'] : '');
-    bool isDefault = isEdit ? addressToEdit['isDefault'] : false;
+    final labelController = TextEditingController(
+      text: isEdit ? addressToEdit.label : '',
+    );
+    final nameController = TextEditingController(
+      text: isEdit ? addressToEdit.name : '',
+    );
+    final phoneController = TextEditingController(
+      text: isEdit ? addressToEdit.phone : '',
+    );
+    final detailController = TextEditingController(
+      text: isEdit ? addressToEdit.detail : '',
+    );
+    bool isDefault = isEdit ? addressToEdit.isDefault : false;
+    bool isSaving = false;
 
     showModalBottomSheet(
       context: context,
@@ -196,7 +230,8 @@ class _AddressScreenState extends State<AddressScreen> {
                     maxLines: 3,
                     decoration: InputDecoration(
                       labelText: 'Alamat Lengkap',
-                      hintText: 'Nama jalan, nomor rumah, RT/RW, kecamatan, kota, dll.',
+                      hintText:
+                          'Nama jalan, nomor rumah, RT/RW, kecamatan, kota, dll.',
                       alignLabelWithHint: true,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -218,11 +253,16 @@ class _AddressScreenState extends State<AddressScreen> {
                   SwitchListTile(
                     title: const Text(
                       'Jadikan Alamat Utama',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                    subtitle: const Text('Gunakan alamat ini untuk pengiriman utama'),
+                    subtitle: const Text(
+                      'Gunakan alamat ini untuk pengiriman utama',
+                    ),
                     value: isDefault,
-                    activeColor: AppColors.primary,
+                    activeThumbColor: AppColors.primary,
                     onChanged: (val) {
                       setModalState(() {
                         isDefault = val;
@@ -233,55 +273,63 @@ class _AddressScreenState extends State<AddressScreen> {
 
                   // Tombol Simpan
                   ElevatedButton(
-                    onPressed: () {
-                      if (formKey.currentState!.validate()) {
-                        setState(() {
-                          if (isEdit) {
-                            // Update Alamat
-                            addressToEdit['label'] = labelController.text.trim();
-                            addressToEdit['name'] = nameController.text.trim();
-                            addressToEdit['phone'] = phoneController.text.trim();
-                            addressToEdit['detail'] = detailController.text.trim();
-                            
-                            if (isDefault) {
-                              _setDefaultAddress(addressToEdit['id']);
-                            } else {
-                              addressToEdit['isDefault'] = false;
+                    onPressed: isSaving
+                        ? null
+                        : () async {
+                            if (formKey.currentState!.validate()) {
+                              setModalState(() => isSaving = true);
+
+                              try {
+                                final data = {
+                                  'label': labelController.text.trim(),
+                                  'name': nameController.text.trim(),
+                                  'phone': phoneController.text.trim(),
+                                  'detail': detailController.text.trim(),
+                                  'isDefault': isDefault,
+                                };
+
+                                if (isEdit) {
+                                  await ApiService.updateAddress(
+                                    addressToEdit.id,
+                                    data,
+                                  );
+                                  if (isDefault) {
+                                    await ApiService.setDefaultAddress(
+                                      addressToEdit.id,
+                                    );
+                                  }
+                                } else {
+                                  await ApiService.addAddress(data);
+                                }
+
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  _fetchAddresses();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        isEdit
+                                            ? 'Alamat berhasil diubah!'
+                                            : 'Alamat baru berhasil ditambahkan!',
+                                      ),
+                                      backgroundColor: AppColors.success,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Gagal: $e'),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                }
+                              } finally {
+                                setModalState(() => isSaving = false);
+                              }
                             }
-                          } else {
-                            // Tambah Alamat Baru
-                            final newId = _addresses.isEmpty
-                                ? 1
-                                : _addresses.map((a) => a['id'] as int).reduce((a, b) => a > b ? a : b) + 1;
-                            
-                            final newAddress = {
-                              'id': newId,
-                              'label': labelController.text.trim(),
-                              'name': nameController.text.trim(),
-                              'phone': phoneController.text.trim(),
-                              'detail': detailController.text.trim(),
-                              'isDefault': isDefault,
-                            };
-
-                            _addresses.add(newAddress);
-
-                            if (isDefault) {
-                              _setDefaultAddress(newId);
-                            }
-                          }
-                        });
-
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              isEdit ? 'Alamat berhasil diubah!' : 'Alamat baru berhasil ditambahkan!',
-                            ),
-                            backgroundColor: AppColors.success,
-                          ),
-                        );
-                      }
-                    },
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -290,10 +338,15 @@ class _AddressScreenState extends State<AddressScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: Text(
-                      isEdit ? 'Simpan Perubahan' : 'Tambah Alamat',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
+                    child: isSaving
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : Text(
+                            isEdit ? 'Simpan Perubahan' : 'Tambah Alamat',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -339,7 +392,11 @@ class _AddressScreenState extends State<AddressScreen> {
 
           // Daftar Alamat
           Expanded(
-            child: _addresses.isEmpty
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
+                : _addresses.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -366,138 +423,192 @@ class _AddressScreenState extends State<AddressScreen> {
                     itemCount: _addresses.length,
                     itemBuilder: (context, index) {
                       final addr = _addresses[index];
-                      final isDefault = addr['isDefault'] == true;
+                      final isDefault = addr.isDefault;
 
                       return Card(
-                        margin: const EdgeInsets.only(bottom: 16),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        clipBehavior: Clip.antiAlias,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                           side: BorderSide(
-                            color: isDefault ? AppColors.primary : Colors.grey.shade200,
-                            width: isDefault ? 2 : 1,
+                            color: isDefault
+                                ? AppColors.primary
+                                : Colors.grey.shade300,
+                            width: isDefault ? 2 : 1.5,
                           ),
                         ),
-                        elevation: isDefault ? 2 : 0,
-                        color: isDefault ? AppColors.primary.withValues(alpha: 0.01) : Colors.white,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Label Chip & Default Badge
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      addr['label'],
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  if (isDefault)
+                        elevation: 0,
+                        color: isDefault
+                            ? AppColors.primary.withValues(alpha: 0.03)
+                            : Colors.white,
+                        child: InkWell(
+                          onTap: () {
+                            if (widget.isSelectionMode) {
+                              Navigator.pop(context, addr.id);
+                            }
+                          },
+                          splashColor: AppColors.primary.withValues(alpha: 0.1),
+                          highlightColor: AppColors.primary.withValues(
+                            alpha: 0.05,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Label Chip & Default Badge
+                                Row(
+                                  children: [
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green.shade50,
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: Colors.green.shade200),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
                                       ),
-                                      child: const Row(
-                                        children: [
-                                          Icon(Icons.check, size: 10, color: Colors.green),
-                                          SizedBox(width: 4),
-                                          Text(
-                                            'Utama',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        addr.label,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    if (isDefault)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green.shade50,
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.green.shade200,
+                                          ),
+                                        ),
+                                        child: const Row(
+                                          children: [
+                                            Icon(
+                                              Icons.check,
+                                              size: 10,
                                               color: Colors.green,
                                             ),
-                                          ),
-                                        ],
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'Utama',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.green,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-
-                              // Penerima & Telepon
-                              Text(
-                                addr['name'],
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                addr['phone'],
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
+                                const SizedBox(height: 8),
 
-                              // Alamat Lengkap
-                              Text(
-                                addr['detail'],
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  height: 1.5,
-                                  color: Colors.grey.shade700,
-                                ),
-                              ),
-                              const Divider(height: 24),
-
-                              // Actions Row
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  if (!isDefault)
-                                    TextButton.icon(
-                                      onPressed: () => _setDefaultAddress(addr['id']),
-                                      icon: const Icon(Icons.check_circle_outline, size: 16),
-                                      label: const Text('Set Utama', style: TextStyle(fontSize: 12)),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: AppColors.primary,
-                                        visualDensity: VisualDensity.compact,
-                                      ),
-                                    ),
-                                  if (!isDefault) const SizedBox(width: 8),
-                                  TextButton.icon(
-                                    onPressed: () => _showAddressForm(addressToEdit: addr),
-                                    icon: const Icon(Icons.edit_outlined, size: 16),
-                                    label: const Text('Edit', style: TextStyle(fontSize: 12)),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: AppColors.textSecondary,
-                                      visualDensity: VisualDensity.compact,
-                                    ),
+                                // Penerima & Telepon
+                                Text(
+                                  addr.name,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary,
                                   ),
-                                  const SizedBox(width: 8),
-                                  if (!isDefault)
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  addr.phone,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+
+                                // Alamat Lengkap
+                                Text(
+                                  addr.detail,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    height: 1.5,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                                const Divider(height: 16),
+
+                                // Actions Row
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    if (!isDefault)
+                                      TextButton.icon(
+                                        onPressed: () =>
+                                            _setDefaultAddress(addr.id),
+                                        icon: const Icon(
+                                          Icons.check_circle_outline,
+                                          size: 16,
+                                        ),
+                                        label: const Text(
+                                          'Set Utama',
+                                          style: TextStyle(fontSize: 12),
+                                        ),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: AppColors.primary,
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                      ),
+                                    if (!isDefault) const SizedBox(width: 8),
                                     TextButton.icon(
-                                      onPressed: () => _deleteAddress(addr['id']),
-                                      icon: const Icon(Icons.delete_outline, size: 16),
-                                      label: const Text('Hapus', style: TextStyle(fontSize: 12)),
+                                      onPressed: () =>
+                                          _showAddressForm(addressToEdit: addr),
+                                      icon: const Icon(
+                                        Icons.edit_outlined,
+                                        size: 16,
+                                      ),
+                                      label: const Text(
+                                        'Edit',
+                                        style: TextStyle(fontSize: 12),
+                                      ),
                                       style: TextButton.styleFrom(
-                                        foregroundColor: AppColors.error,
+                                        foregroundColor:
+                                            AppColors.textSecondary,
                                         visualDensity: VisualDensity.compact,
                                       ),
                                     ),
-                                ],
-                              ),
-                            ],
+                                    const SizedBox(width: 8),
+                                    if (!isDefault)
+                                      TextButton.icon(
+                                        onPressed: () =>
+                                            _deleteAddress(addr.id),
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          size: 16,
+                                        ),
+                                        label: const Text(
+                                          'Hapus',
+                                          style: TextStyle(fontSize: 12),
+                                        ),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: AppColors.error,
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_constants.dart';
-import '../../models/dummy_data.dart';
+
 import '../../models/product.dart';
 import '../../widgets/product_card.dart';
 import '../product/product_detail_screen.dart';
@@ -26,12 +26,10 @@ class ProductListScreen extends StatefulWidget {
 }
 
 class _ProductListScreenState extends State<ProductListScreen> {
-  bool _isGridView = true;
   String _sortBy = 'terbaru';
   RangeValues _priceRange = const RangeValues(0, 500000);
   bool _isLoading = true;
   List<Product> _allProducts = [];
-
   @override
   void initState() {
     super.initState();
@@ -130,70 +128,70 @@ class _ProductListScreenState extends State<ProductListScreen> {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         actions: [
-          // Cart button
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.shopping_cart),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const CartScreen(),
-                    ),
-                  );
-                },
-              ),
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: AppColors.accent,
-                    shape: BoxShape.circle,
+          ValueListenableBuilder<int>(
+            valueListenable: ApiService.cartBadgeCount,
+            builder: (context, count, child) {
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.shopping_cart),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CartScreen(),
+                        ),
+                      );
+                    },
                   ),
-                  child: Text(
-                    '${DummyData.cartItems.length}',
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                  if (count > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: AppColors.accent,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          count.toString(),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          // View toggle
-          IconButton(
-            icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),
-            onPressed: () {
-              setState(() {
-                _isGridView = !_isGridView;
-              });
+                ],
+              );
             },
           ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : Column(
-              children: [
-                // Filter & Sort Bar
-                _buildFilterBar(),
+          : RefreshIndicator(
+              onRefresh: _fetchProducts,
+              color: AppColors.primary,
+              child: Column(
+                children: [
+                  // Filter & Sort Bar
+                  _buildFilterBar(),
 
-                // Product List/Grid
-                Expanded(
-                  child: _isGridView ? _buildGridView() : _buildListView(),
-                ),
-              ],
+                  // Product Grid
+                  Expanded(
+                    child: _buildGridView(),
+                  ),
+                ],
+              ),
             ),
-      // Filter button
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showFilterBottomSheet,
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.filter_list, color: Colors.white),
-      ),
     );
   }
 
@@ -277,80 +275,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
           onAddToCart: () {
             _addToCart(product);
           },
-        );
-      },
-    );
-  }
-
-  Widget _buildListView() {
-    final products = _filteredProducts;
-    return ListView.builder(
-      padding: const EdgeInsets.all(AppConstants.paddingM),
-      itemCount: products.length,
-      itemBuilder: (context, index) {
-        final product = products[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: AppConstants.paddingM),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(AppConstants.paddingS),
-            leading: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(AppConstants.radiusM),
-              ),
-              child: Icon(
-                Icons.eco,
-                size: 40,
-                color: AppColors.primary.withValues(alpha: 0.5),
-              ),
-            ),
-            title: Text(
-              product.name,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.star, size: 14, color: AppColors.accent),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${product.rating} (${product.reviewCount})',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Rp ${_formatPrice(product.displayPrice)}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ],
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.add_shopping_cart, color: AppColors.primary),
-              onPressed: () {
-                _addToCart(product);
-              },
-            ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ProductDetailScreen(product: product),
-                ),
-              );
-            },
-          ),
         );
       },
     );
@@ -442,12 +366,5 @@ class _ProductListScreenState extends State<ProductListScreen> {
     );
   }
 
-  String _formatPrice(double price) {
-    if (price >= 1000000) {
-      return '${(price / 1000000).toStringAsFixed(1)}jt';
-    } else if (price >= 1000) {
-      return '${(price / 1000).toStringAsFixed(0)}rb';
-    }
-    return price.toStringAsFixed(0);
-  }
+
 }

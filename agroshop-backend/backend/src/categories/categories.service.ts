@@ -48,9 +48,6 @@ export class CategoriesService {
       },
     });
 
-    if (rawData.length === 0) {
-      throw new NotFoundException({});
-    }
 
     // Format datanya agar persis dengan yang diminta category.dart di Flutter
     const formattedData = rawData.map((category) => ({
