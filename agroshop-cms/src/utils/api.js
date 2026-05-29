@@ -50,3 +50,10 @@ export async function changePassword(data) {
     body: JSON.stringify(data),
   });
 }
+
+export async function updateProfile(data) {
+  return apiRequest('/auth/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
