@@ -44,3 +44,9 @@ export async function apiRequest(path, options = {}) {
   return payload;
 }
 
+export async function changePassword(data) {
+  return apiRequest('/auth/change-password', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}

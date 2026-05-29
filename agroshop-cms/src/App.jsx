@@ -10,6 +10,7 @@ import Products from './pages/Products';
 import Banners from './pages/Banners';
 import Orders from './pages/Orders';
 import Users from './pages/Users';
+import Settings from './pages/Settings';
 
 export default function App() {
   const [session, setSession] = useState(getStoredSession());
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="banners" element={<Banners />} />
           <Route path="orders" element={<Orders />} />
           <Route path="users" element={<Users />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
     </BrowserRouter>

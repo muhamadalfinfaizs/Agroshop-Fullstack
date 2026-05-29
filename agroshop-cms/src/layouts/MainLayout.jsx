@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Tag, Package, Image as ImageIcon, ShoppingCart, Users, LogOut } from 'lucide-react';
+import { LayoutDashboard, Tag, Package, Image as ImageIcon, ShoppingCart, Users, Settings as SettingsIcon, LogOut } from 'lucide-react';
 import { clearSession, API_BASE_URL } from '../utils/api';
 
 export default function MainLayout({ session, setSession }) {
@@ -20,6 +20,7 @@ export default function MainLayout({ session, setSession }) {
     { path: '/banners', label: 'Banner', icon: ImageIcon },
     { path: '/orders', label: 'Pesanan', icon: ShoppingCart },
     { path: '/users', label: 'User', icon: Users },
+    { path: '/settings', label: 'Pengaturan', icon: SettingsIcon },
   ];
 
   return (
