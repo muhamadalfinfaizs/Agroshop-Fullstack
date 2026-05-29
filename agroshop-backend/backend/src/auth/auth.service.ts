@@ -11,7 +11,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { User } from '@prisma/client';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-
+import { ChangePasswordDto } from './dto/change-password.dto';
 @Injectable()
 export class AuthService {
   constructor(
@@ -189,6 +189,46 @@ export class AuthService {
     return {
       message: 'Profil berhasil diperbarui',
       user,
+    };
+  }
+
+  // ==============================
+  // FITUR 5: GANTI PASSWORD
+  // ==============================
+  async changePassword(userId: number, changePasswordDto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User tidak ditemukan');
+    }
+
+    // Validasi password lama
+    const isPasswordValid = await bcrypt.compare(
+      changePasswordDto.oldPassword,
+      user.password,
+    );
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Password lama salah');
+    }
+
+    // Enkripsi password baru
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(
+      changePasswordDto.newPassword,
+      saltRounds,
+    );
+
+    // Simpan password baru ke database
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    return {
+      message: 'Password berhasil diubah',
     };
   }
 }
