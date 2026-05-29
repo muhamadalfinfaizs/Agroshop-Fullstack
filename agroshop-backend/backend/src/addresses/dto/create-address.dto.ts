@@ -5,3 +5,4 @@ export class CreateAddressDto {
   detail!: string;
   isDefault?: boolean;
 }
+

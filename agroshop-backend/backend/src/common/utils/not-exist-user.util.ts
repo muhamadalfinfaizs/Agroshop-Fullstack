@@ -12,3 +12,4 @@ export async function notExistUser(id: number, prisma: PrismaService) {
   }
   return user;
 }
+

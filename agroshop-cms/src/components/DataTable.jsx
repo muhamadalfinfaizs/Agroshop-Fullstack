@@ -56,3 +56,4 @@ export function RowActions({ onEdit, onDelete }) {
     </div>
   );
 }
+

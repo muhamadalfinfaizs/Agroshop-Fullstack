@@ -5,3 +5,4 @@ export class UpdateAddressDto {
   detail?: string;
   isDefault?: boolean;
 }
+

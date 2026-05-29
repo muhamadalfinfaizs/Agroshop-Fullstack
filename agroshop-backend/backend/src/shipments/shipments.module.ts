@@ -7,3 +7,4 @@ import { ShipmentsService } from './shipments.service';
   providers: [ShipmentsService],
 })
 export class ShipmentsModule {}
+

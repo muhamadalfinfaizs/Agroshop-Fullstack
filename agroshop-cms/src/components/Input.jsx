@@ -29,3 +29,4 @@ export default function Input({ label, name, type = 'text', value, setForm, type
     </div>
   );
 }
+

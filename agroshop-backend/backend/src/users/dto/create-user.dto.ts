@@ -6,3 +6,4 @@ export class CreateUserDto {
   address?: string;
   imageUrl?: string;
 }
+

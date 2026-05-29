@@ -3,3 +3,4 @@ export class CreateCategoryDto {
   icon!: string;
   imageUrl!: string;
 }
+

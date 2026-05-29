@@ -3,3 +3,4 @@ export class UpdateShipmentDto {
   trackingNumber?: string;
   status?: string;
 }
+

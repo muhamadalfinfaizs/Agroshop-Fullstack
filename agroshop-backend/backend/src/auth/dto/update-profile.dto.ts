@@ -4,3 +4,4 @@ export class UpdateProfileDto {
   phone?: string;
   imageUrl?: string;
 }
+

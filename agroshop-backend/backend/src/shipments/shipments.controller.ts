@@ -45,3 +45,4 @@ export class ShipmentsController {
     return this.shipmentsService.addEvent(orderCode, createShipmentEventDto);
   }
 }
+

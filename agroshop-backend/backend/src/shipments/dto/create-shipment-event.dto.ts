@@ -4,3 +4,4 @@ export class CreateShipmentEventDto {
   location?: string;
   status?: string;
 }
+

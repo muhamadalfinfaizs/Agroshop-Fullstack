@@ -18,3 +18,4 @@ export async function notExistBanner(id: number, prisma: PrismaService) {
 
   return banner;
 }
+

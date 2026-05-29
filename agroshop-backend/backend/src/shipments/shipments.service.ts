@@ -251,3 +251,4 @@ export class ShipmentsService {
     return labels[status] ?? status;
   }
 }
+

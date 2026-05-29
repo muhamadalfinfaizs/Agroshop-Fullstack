@@ -3,3 +3,4 @@ export class CreateBannerDto {
   subtitle!: string;
   imageUrl!: string;
 }
+

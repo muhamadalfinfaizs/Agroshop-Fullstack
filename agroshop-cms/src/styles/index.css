@@ -362,3 +362,4 @@ body {
 }
 .notice.success { background-color: var(--primary-light); color: var(--primary-dark); border: 1px solid #a7f3d0; }
 .notice.danger { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+

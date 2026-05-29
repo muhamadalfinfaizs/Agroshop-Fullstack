@@ -11,3 +11,4 @@ export class CreateProductDto {
   unit!: string;
   categoryId!: number;
 }
+

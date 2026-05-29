@@ -18,3 +18,4 @@ export async function notExistCategory(id: number, prisma: PrismaService) {
 
   return category;
 }
+

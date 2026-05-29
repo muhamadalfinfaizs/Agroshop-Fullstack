@@ -36,3 +36,4 @@ export default function CrudLayout({ title, loading, form, children, isFormVisib
   );
 
 }
+
