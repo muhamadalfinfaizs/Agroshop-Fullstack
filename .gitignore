@@ -31,7 +31,8 @@ Thumbs.db
 # Dokumentasi internal/catatan lama yang tidak dikumpulkan PBS
 docs/
 
-# Simpan folder User saja tanpa isi project
-User/*
-!User/.gitkeep
+# Hanya push folder User — ignore folder lain
+Api/
+Cms/
+Dokumentasi/
 *.log
