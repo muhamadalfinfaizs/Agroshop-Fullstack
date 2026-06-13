@@ -34,5 +34,4 @@ docs/
 # Hanya push folder User — ignore folder lain
 Api/
 Cms/
-Dokumentasi/
 *.log
