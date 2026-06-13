@@ -1,0 +1,219 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String
+  icon     String
+  imageUrl String
+  products Product[]
+}
+
+model Product {
+  id            Int         @id @default(autoincrement())
+  name          String
+  description   String
+  price         Float
+  discountPrice Float?
+  imageUrl      String
+  images        String[]
+  stock         Int
+  rating        Float       @default(0)
+  reviewCount   Int         @default(0)
+  isFeatured    Boolean     @default(false)
+  isAvailable   Boolean     @default(true)
+  unit          String
+  categoryId    Int
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  category      Category    @relation(fields: [categoryId], references: [id])
+}
+
+model User {
+  id                   Int                    @id @default(autoincrement())
+  name                 String
+  email                String                 @unique
+  password             String
+  role                 Role                   @default(FARMER)
+  phone                String?
+  imageUrl             String?
+  joinedDate           DateTime?              @default(now())
+  addresses            Address[]
+  cartItems            CartItem[]
+  orders               Order[]
+  chatbot_logs         chatbot_logs[]
+  consultation_replies consultation_replies[]
+  consultations        consultations[]
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  quantity  Int
+  addedAt   DateTime @default(now())
+  productId Int
+  userId    Int
+  product   Product  @relation(fields: [productId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Order {
+  id              Int         @id @default(autoincrement())
+  orderCode       String      @unique
+  status          OrderStatus @default(PROCESSING)
+  total           Float
+  shippingAddress String?
+  createdAt       DateTime    @default(now())
+  userId          Int
+  user            User        @relation(fields: [userId], references: [id])
+  items           OrderItem[]
+  shipment        Shipment?
+}
+
+model OrderItem {
+  id          Int     @id @default(autoincrement())
+  quantity    Int
+  price       Float
+  productName String
+  orderId     Int
+  productId   Int
+  order       Order   @relation(fields: [orderId], references: [id])
+  product     Product @relation(fields: [productId], references: [id])
+}
+
+model Address {
+  id        Int      @id @default(autoincrement())
+  label     String
+  name      String
+  phone     String
+  detail    String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Shipment {
+  id             Int             @id @default(autoincrement())
+  courier        String?
+  trackingNumber String?
+  status         ShipmentStatus  @default(WAITING)
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  orderId        Int             @unique
+  order          Order           @relation(fields: [orderId], references: [id])
+  events         ShipmentEvent[]
+}
+
+model ShipmentEvent {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  location    String?
+  createdAt   DateTime @default(now())
+  shipmentId  Int
+  shipment    Shipment @relation(fields: [shipmentId], references: [id])
+}
+
+model Banner {
+  id       Int    @id @default(autoincrement())
+  title    String
+  subtitle String
+  imageUrl String
+}
+
+model Intent {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime
+  Keyword     Keyword[]
+  Response    Response[]
+}
+
+model Keyword {
+  id        Int      @id @default(autoincrement())
+  keyword   String
+  intentId  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  Intent    Intent   @relation(fields: [intentId], references: [id], onDelete: Cascade)
+}
+
+model Response {
+  id               Int      @id @default(autoincrement())
+  text             String
+  solution         String?
+  recommendProduct String?
+  intentId         Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime
+  Intent           Intent   @relation(fields: [intentId], references: [id], onDelete: Cascade)
+}
+
+model chatbot_logs {
+  id        Int      @id @default(autoincrement())
+  message   String
+  reply     String
+  isMatch   Boolean  @default(true)
+  userId    Int?
+  createdAt DateTime @default(now())
+  User      User?    @relation(fields: [userId], references: [id])
+}
+
+model consultation_replies {
+  id             Int           @id @default(autoincrement())
+  consultationId Int
+  repliedById    Int
+  message        String
+  createdAt      DateTime      @default(now())
+  consultations  consultations @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  User           User          @relation(fields: [repliedById], references: [id], onDelete: Cascade)
+}
+
+model consultations {
+  id                   Int                    @id @default(autoincrement())
+  userId               Int
+  status               ConsultationStatus     @default(PENDING)
+  question             String
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime
+  consultation_replies consultation_replies[]
+  User                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  ADMIN
+  FARMER
+}
+
+enum OrderStatus {
+  PROCESSING
+  SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+enum ShipmentStatus {
+  WAITING
+  PACKED
+  SHIPPED
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
+enum ConsultationStatus {
+  PENDING
+  OPEN
+  CLOSED
+}
